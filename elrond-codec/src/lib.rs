@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(associated_type_defaults)]
 
 extern crate alloc;
 
@@ -50,6 +51,21 @@ pub enum TypeInfo {
 	BigUint,
 	BigInt,
 	Unit,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum OptConstSize {
+	None,
+	Some(usize),
+}
+
+pub const fn const_size_add(a: OptConstSize, b: OptConstSize) -> OptConstSize {
+	match (a, b) {
+		(OptConstSize::Some(usize_a), OptConstSize::Some(usize_b)) => {
+			OptConstSize::Some(usize_a + usize_b)
+		},
+		_ => OptConstSize::None,
+	}
 }
 
 /// Until we have derive capabilities, here are some structures with explicit encode/decode, for testing.
@@ -147,44 +163,53 @@ pub mod test_struct {
 		Struct { a: u32 },
 	}
 
-	impl NestedEncodeNoErr for E {
-		fn dep_encode_no_err<O: NestedEncodeOutput>(&self, dest: &mut O) {
+	impl NestedEncode for E {
+		fn dep_encode<O: NestedEncodeOutput>(&self, dest: &mut O) -> Result<(), EncodeError> {
 			match self {
 				E::Unit => {
-					0u32.dep_encode_no_err(dest);
+					0u32.dep_encode(dest)?;
 				},
 				E::Newtype(arg1) => {
-					1u32.dep_encode_no_err(dest);
-					arg1.dep_encode_no_err(dest);
+					1u32.dep_encode(dest)?;
+					arg1.dep_encode(dest)?;
 				},
 				E::Tuple(arg1, arg2) => {
-					2u32.dep_encode_no_err(dest);
-					arg1.dep_encode_no_err(dest);
-					arg2.dep_encode_no_err(dest);
+					2u32.dep_encode(dest)?;
+					arg1.dep_encode(dest)?;
+					arg2.dep_encode(dest)?;
 				},
 				E::Struct { a } => {
-					3u32.dep_encode_no_err(dest);
-					a.dep_encode_no_err(dest);
+					3u32.dep_encode(dest)?;
+					a.dep_encode(dest)?;
 				},
 			}
-		}
-	}
-
-	impl NestedEncode for E {
-		#[inline]
-		fn dep_encode<O: NestedEncodeOutput>(&self, dest: &mut O) -> Result<(), EncodeError> {
-			self.dep_encode_no_err(dest);
 			Ok(())
 		}
 
-		#[inline]
 		fn dep_encode_or_exit<O: NestedEncodeOutput, ExitCtx: Clone>(
 			&self,
 			dest: &mut O,
-			_: ExitCtx,
-			_: fn(ExitCtx, EncodeError) -> !,
+			c: ExitCtx,
+			exit: fn(ExitCtx, EncodeError) -> !,
 		) {
-			self.dep_encode_no_err(dest);
+			match self {
+				E::Unit => {
+					0u32.dep_encode_or_exit(dest, c.clone(), exit);
+				},
+				E::Newtype(arg1) => {
+					1u32.dep_encode_or_exit(dest, c.clone(), exit);
+					arg1.dep_encode_or_exit(dest, c.clone(), exit);
+				},
+				E::Tuple(arg1, arg2) => {
+					2u32.dep_encode_or_exit(dest, c.clone(), exit);
+					arg1.dep_encode_or_exit(dest, c.clone(), exit);
+					arg2.dep_encode_or_exit(dest, c.clone(), exit);
+				},
+				E::Struct { a } => {
+					3u32.dep_encode_or_exit(dest, c.clone(), exit);
+					a.dep_encode_or_exit(dest, c.clone(), exit);
+				},
+			}
 		}
 	}
 

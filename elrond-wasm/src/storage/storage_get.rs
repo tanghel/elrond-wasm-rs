@@ -82,6 +82,6 @@ where
 	A: ContractHookApi<BigInt, BigUint> + ContractIOApi<BigInt, BigUint> + 'static,
 {
 	let decode_err_message =
-		BoxedBytes::from_concat(&[err_msg::STORAGE_DECODE_ERROR, de_err.message_bytes()][..]);
+		BoxedBytes::from_concat(&[err_msg::STORAGE_VALUE_DECODE_ERROR, de_err.message_bytes()][..]);
 	api.signal_error(decode_err_message.as_slice())
 }

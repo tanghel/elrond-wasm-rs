@@ -19,7 +19,7 @@ pub mod types;
 pub use call_data::*;
 pub use io::*;
 pub use proxy::OtherContractHandle;
-pub use storage::{storage_get, storage_set};
+pub use storage::{storage_get, storage_set, with_storage_key};
 pub use types::*;
 
 use core::ops::{Add, Div, Mul, Neg, Rem, Sub};

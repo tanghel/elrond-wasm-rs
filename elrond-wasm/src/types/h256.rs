@@ -153,6 +153,19 @@ impl NestedEncode for H256 {
 	) {
 		dest.write(&self.0[..]);
 	}
+
+	const HAS_CONST_ENCODE_LEN: bool = true;
+
+	type ConstEncodeLen = typenum::U32;
+
+	fn dep_encode_in_place_or_exit<ExitCtx: Clone>(
+		&self,
+		target: &mut [u8],
+		_c: ExitCtx,
+		_exit: fn(ExitCtx, EncodeError) -> !,
+	) {
+		target.copy_from_slice(&self.0[..]);
+	}
 }
 
 impl TopEncode for H256 {

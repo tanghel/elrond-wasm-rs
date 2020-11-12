@@ -72,12 +72,15 @@ where
 	);
 }
 
+/// Since encoding doesn't really ever fail, this doesn't really ever get called.
 #[inline(always)]
-fn storage_set_exit<A, BigInt, BigUint>(api: A, encode_err: EncodeError) -> !
+fn storage_set_exit<A, BigInt, BigUint>(api: A, en_err: EncodeError) -> !
 where
 	BigInt: NestedEncode + 'static,
 	BigUint: NestedEncode + 'static,
 	A: ContractHookApi<BigInt, BigUint> + ContractIOApi<BigInt, BigUint> + 'static,
 {
-	api.signal_error(encode_err.message_bytes())
+	let encode_err_message =
+		BoxedBytes::from_concat(&[err_msg::STORAGE_VALUE_ENCODE_ERROR, en_err.message_bytes()][..]);
+	api.signal_error(encode_err_message.as_slice())
 }
