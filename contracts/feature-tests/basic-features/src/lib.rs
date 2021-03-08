@@ -439,12 +439,6 @@ pub trait BasicFeatures {
 			.set(&mapped_value.get() + amount);
 	}
 
-	#[endpoint]
-	fn my_getter_setter_mapper_increment_with_mutable(&self, amount: &BigInt) {
-		let mut mapped_value_mutable = self.my_getter_setter_mapper().get_mut();
-		*mapped_value_mutable += amount;
-	}
-
 	// VecMapper
 
 	#[view]
