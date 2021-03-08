@@ -3,7 +3,7 @@ use crate::abi::{TypeAbi, TypeDescriptionContainer, TypeName};
 use crate::api::{EndpointFinishApi, ErrorApi, StorageReadApi, StorageWriteApi};
 use crate::io::EndpointResult;
 use crate::storage::{storage_get, storage_set};
-use crate::types::{BorrowedMutStorage, BoxedBytes};
+use crate::types::BoxedBytes;
 use core::marker::PhantomData;
 use elrond_codec::{TopDecode, TopEncode};
 
@@ -40,14 +40,6 @@ where
 	// Get the value from storage.
 	pub fn get(&self) -> T {
 		storage_get(self.api.clone(), self.key.as_slice())
-	}
-
-	// Get the value as mutable. See BorrowedMutStorage.
-	pub fn get_mut(&self) -> BorrowedMutStorage<SA, T> {
-		<BorrowedMutStorage<SA, T>>::with_generated_key(
-			self.api.clone(),
-			self.key.as_slice().into(),
-		)
 	}
 
 	/// Saves the value to storage.
