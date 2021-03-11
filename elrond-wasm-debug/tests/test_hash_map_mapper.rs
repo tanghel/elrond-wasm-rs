@@ -1,5 +1,4 @@
-use elrond_wasm::storage::mappers::MapMapper;
-use elrond_wasm::storage::mappers::StorageMapper;
+use elrond_wasm::storage::mappers::{MapMapper, StorageClearable, StorageMapper};
 use elrond_wasm::types::BoxedBytes;
 use elrond_wasm_debug::TxContext;
 
