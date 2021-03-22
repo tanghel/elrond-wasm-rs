@@ -567,4 +567,64 @@ pub trait MultisigManager {
 
 		Ok(PerformActionResult::DeployResult(new_address))
 	}
+
+	#[storage_mapper("multisigMappings")]
+	fn get_multisig_mappings(&self, owner: &Address) -> MapMapper<Self::Storage, Address, Address>;
+
+	#[endpoint(registerMultisig)]
+	fn register_multisig(&self, multisig_address: Address) -> SCResult<Address> {
+		let my_address = self.get_caller();
+
+		let array1: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+		let array2: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+		let array3: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+		multisig_address.copy_to_array(array1);
+		multisig_address.copy_to_array(array2);
+		multisig_address.copy_to_array(array3);
+
+		let key = Address::from(array1);
+		let value = Address::from(array2);
+
+		self.get_multisig_mappings(&my_address)
+			.insert(key, value);
+
+		Ok(Address::from(array3))
+	}
+
+	#[endpoint(unregisterMultisig)]
+	fn unregister_multisig(&self, multisig_address: Address) -> SCResult<Address> {
+		let my_address = self.get_caller();
+
+		let array1: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+		let array2: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+		multisig_address.copy_to_array(array1);
+		multisig_address.copy_to_array(array2);
+
+		let key = Address::from(array1);
+
+		self.get_multisig_mappings(&my_address)
+			.remove(&key);
+
+		Ok(Address::from(array2))
+	}
+
+	#[endpoint(getMultisigAddresses)]
+	fn get_multisig_addresses(&self) -> SCResult<Vec<Address>> {
+		let my_address = self.get_caller();
+		
+		let keys = self.get_multisig_mappings(&my_address).keys().collect();
+
+		Ok(keys)
+	}
+
+	#[view(verifyMultisig)]
+	fn verify_multisig(&self, multisig_address: &Address) -> Address {
+		let my_address = self.get_caller();
+
+		self.get_multisig_mappings(&my_address)
+			.get(&multisig_address)
+			.unwrap_or_else(Address::zero)
+	}
 }
