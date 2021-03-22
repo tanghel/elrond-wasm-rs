@@ -569,62 +569,41 @@ pub trait MultisigManager {
 	}
 
 	#[storage_mapper("multisigMappings")]
-	fn get_multisig_mappings(&self, owner: &Address) -> MapMapper<Self::Storage, Address, Address>;
+	fn get_multisig_mappings(&self, owner: &Address) -> MapMapper<Self::Storage, Address, BoxedBytes>;
 
 	#[endpoint(registerMultisig)]
-	fn register_multisig(&self, multisig_address: Address) -> SCResult<Address> {
+	fn register_multisig(&self, multisig_address: Address, description: BoxedBytes) -> SCResult<()> {
 		let my_address = self.get_caller();
 
-		let array1: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-		let array2: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-		let array3: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
-		multisig_address.copy_to_array(array1);
-		multisig_address.copy_to_array(array2);
-		multisig_address.copy_to_array(array3);
-
-		let key = Address::from(array1);
-		let value = Address::from(array2);
-
 		self.get_multisig_mappings(&my_address)
-			.insert(key, value);
+			.insert(multisig_address, description);
 
-		Ok(Address::from(array3))
+		Ok(())
 	}
 
 	#[endpoint(unregisterMultisig)]
-	fn unregister_multisig(&self, multisig_address: Address) -> SCResult<Address> {
+	fn unregister_multisig(&self, multisig_address: Address) -> SCResult<()> {
 		let my_address = self.get_caller();
-
-		let array1: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-		let array2: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
-		multisig_address.copy_to_array(array1);
-		multisig_address.copy_to_array(array2);
-
-		let key = Address::from(array1);
 
 		self.get_multisig_mappings(&my_address)
-			.remove(&key);
+			.remove(&multisig_address);
 
-		Ok(Address::from(array2))
+		Ok(())
 	}
 
-	#[endpoint(getMultisigAddresses)]
-	fn get_multisig_addresses(&self) -> SCResult<Vec<Address>> {
+	#[view(getMultisigAddresses)]
+	fn get_multisig_addresses(&self) -> Vec<Address> {
 		let my_address = self.get_caller();
 		
-		let keys = self.get_multisig_mappings(&my_address).keys().collect();
-
-		Ok(keys)
+		self.get_multisig_mappings(&my_address).keys().collect()
 	}
 
-	#[view(verifyMultisig)]
-	fn verify_multisig(&self, multisig_address: &Address) -> Address {
+	#[view(getMultisigDescription)]
+	fn get_multisig_description(&self, multisig_address: &Address) -> BoxedBytes {
 		let my_address = self.get_caller();
 
 		self.get_multisig_mappings(&my_address)
 			.get(&multisig_address)
-			.unwrap_or_else(Address::zero)
+			.unwrap_or_else(|| BoxedBytes::empty())
 	}
 }
