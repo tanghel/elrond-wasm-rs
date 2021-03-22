@@ -24,3 +24,4 @@ impl UserRole {
 		matches!(*self, UserRole::BoardMember)
 	}
 }
+
