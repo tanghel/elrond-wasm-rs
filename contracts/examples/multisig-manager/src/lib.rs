@@ -1,5 +1,9 @@
 #![no_std]
 
+mod multisig_contract;
+
+use multisig_contract::MultisigContractInfo;
+
 elrond_wasm::imports!();
 
 /// Multi-signature smart contract implementation.
@@ -10,44 +14,91 @@ pub trait MultisigManager {
 	#[storage_mapper("multisigList")]
 	fn get_multisig_list(&self, owner: &Address) -> MapMapper<Self::Storage, Address, BoxedBytes>;
 
-	#[endpoint(registerMultisig)]
-	fn register_multisig(&self, multisig_address: Address) -> SCResult<()> {
-		let my_address = self.get_caller();
+	#[storage_mapper("multisigNames")]
+	fn get_multisig_names(&self) -> MapMapper<Self::Storage, Address, BoxedBytes>;
 
-		self.get_multisig_list(&my_address)
-			.insert(multisig_address, BoxedBytes::empty());
+	fn copy_address(&self, address: &Address) -> Address {
+		let array: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+		address.copy_to_array(array);
+
+		Address::from(array)
+	}
+
+	fn register_multisig_user_contract(&self, user_address: &Address, contract_address: Address) {
+		self.get_multisig_list(user_address).insert(contract_address, BoxedBytes::empty());
+	}
+
+	fn unregister_multisig_user_contract(&self, user_address: &Address, contract_address: &Address) {
+		self.get_multisig_list(user_address).remove(contract_address);
+	}
+
+	#[endpoint(registerMultisigContract)]
+	fn register_multisig_contract(&self, contract_address: Address) -> SCResult<()> {
+		let user_address = self.get_caller();
+
+		self.register_multisig_user_contract(&user_address, contract_address);
 
 		Ok(())
 	}
 
-	#[endpoint(unregisterMultisig)]
-	fn unregister_multisig(&self, multisig_address: Address) -> SCResult<()> {
-		let my_address = self.get_caller();
+	#[endpoint(registerMultisigUser)]
+	fn register_multisig_user(&self, user_address: Address) -> SCResult<()> {
+		let contract_address = self.get_caller();
 
-		self.get_multisig_list(&my_address)
-			.remove(&multisig_address);
+		self.register_multisig_user_contract(&user_address, contract_address);
 
 		Ok(())
 	}
 
-	#[view(getMultisigAddresses)]
-	fn get_multisig_addresses(&self) -> Vec<Address> {
-		let my_address = self.get_caller();
-		
-		self.get_multisig_list(&my_address).keys().collect()
+	#[endpoint(unregisterMultisigContract)]
+	fn unregister_multisig_contract(&self, contract_address: Address) -> SCResult<()> {
+		let user_address = self.get_caller();
+
+		self.unregister_multisig_user_contract(&user_address, &contract_address);
+
+		Ok(())
 	}
 
-	#[view(getMultisigDescription)]
-	fn get_multisig_description(&self, multisig_address: &Address) -> BoxedBytes {
-		let my_address = self.get_caller();
+	#[endpoint(unregisterMultisigUser)]
+	fn unregister_multisig_user(&self, user_address: Address) -> SCResult<()> {
+		let contract_address = self.get_caller();
 
-		self.get_multisig_list(&my_address)
+		self.unregister_multisig_user_contract(&user_address, &contract_address);
+
+		Ok(())
+	}
+
+	#[view(getMultisigContractAddresses)]
+	fn get_multisig_contract_addresses(&self, user_address: Address) -> Vec<Address> {
+		self.get_multisig_list(&user_address).keys().collect()
+	}
+
+	#[view(getMultisigContracts)]
+	fn get_multisig_contracts(&self, user_address: Address) -> Vec<MultisigContractInfo> {
+		let addresses = self.get_multisig_contract_addresses(user_address);
+
+		let mut result = Vec::new();
+		for address in addresses {
+			let name = self.get_multisig_contract_name(&address);
+
+			result.push(MultisigContractInfo {
+				address,
+				name
+			})
+		}
+
+		result.into()
+	}
+
+	#[view(getMultisigContractName)]
+	fn get_multisig_contract_name(&self, multisig_address: &Address) -> BoxedBytes {
+		self.get_multisig_names()
 			.get(&multisig_address)
 			.unwrap_or_else(|| BoxedBytes::empty())
 	}
 
 	#[endpoint(deployContract)]
-	fn deploy_contract(&self, #[var_args] arguments: VarArgs<BoxedBytes>) -> SCResult<Address> {
+	fn deploy_contract(&self, name: BoxedBytes, quorum: BoxedBytes, #[var_args] board: VarArgs<Address>) -> SCResult<Address> {
 		let amount = BigUint::from(0u32);
 		
 		let array = [
@@ -30733,10 +30784,14 @@ pub trait MultisigManager {
 		let gas_left = self.get_gas_left();
 
 		let mut arg_buffer = ArgBuffer::new();
+		arg_buffer.push_argument_bytes(quorum.as_slice());
 
-		let args = arguments.into_vec();
-		for arg in args {
-			arg_buffer.push_argument_bytes(arg.as_slice());
+		let mut board_addresses = Vec::new();
+
+		for board_address in board.into_vec() {
+			arg_buffer.push_argument_bytes(self.copy_address(&board_address).into_boxed_bytes().as_slice());
+
+			board_addresses.push(self.copy_address(&board_address));
 		}
 
 		let new_address = self.send().deploy_contract(
@@ -30746,6 +30801,12 @@ pub trait MultisigManager {
 			code_metadata,
 			&arg_buffer,
 		);
+
+		for board_address in board_addresses {
+			self.register_multisig_user_contract(&board_address, self.copy_address(&new_address));
+		}
+
+		self.get_multisig_names().insert(self.copy_address(&new_address), name);
 
 		Ok(new_address)
 	}
