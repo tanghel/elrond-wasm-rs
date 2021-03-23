@@ -535,6 +535,52 @@ pub trait MultisigManager {
 		Ok(())
 	}
 
+	#[endpoint(getContractBytes)]
+	fn get_contract_bytes(&self) -> SCResult<BoxedBytes> {
+		let array = MULTISIG_SC_BYTES;
+
+		Ok(BoxedBytes::from_concat(&[&array]))
+	}
+
+	#[storage_mapper("multisigMappings")]
+	fn get_multisig_mappings(&self, owner: &Address) -> MapMapper<Self::Storage, Address, BoxedBytes>;
+
+	#[endpoint(registerMultisig)]
+	fn register_multisig(&self, multisig_address: Address, description: BoxedBytes) -> SCResult<()> {
+		let my_address = self.get_caller();
+
+		self.get_multisig_mappings(&my_address)
+			.insert(multisig_address, description);
+
+		Ok(())
+	}
+
+	#[endpoint(unregisterMultisig)]
+	fn unregister_multisig(&self, multisig_address: Address) -> SCResult<()> {
+		let my_address = self.get_caller();
+
+		self.get_multisig_mappings(&my_address)
+			.remove(&multisig_address);
+
+		Ok(())
+	}
+
+	#[view(getMultisigAddresses)]
+	fn get_multisig_addresses(&self) -> Vec<Address> {
+		let my_address = self.get_caller();
+		
+		self.get_multisig_mappings(&my_address).keys().collect()
+	}
+
+	#[view(getMultisigDescription)]
+	fn get_multisig_description(&self, multisig_address: &Address) -> BoxedBytes {
+		let my_address = self.get_caller();
+
+		self.get_multisig_mappings(&my_address)
+			.get(&multisig_address)
+			.unwrap_or_else(|| BoxedBytes::empty())
+	}
+
 	#[endpoint(deployContract)]
 	fn deploy_contract(&self, #[var_args] arguments: VarArgs<BoxedBytes>) -> SCResult<PerformActionResult<BigUint>> {
 		let amount = BigUint::from(0u32);
@@ -31237,51 +31283,5 @@ pub trait MultisigManager {
 		);
 
 		Ok(PerformActionResult::DeployResult(new_address))
-	}
-
-	#[endpoint(getContractBytes)]
-	fn get_contract_byte(&self) -> SCResult<BoxedBytes> {
-		let array = MULTISIG_SC_BYTES;
-
-		Ok(BoxedBytes::from_concat(&[&array]))
-	}
-
-	#[storage_mapper("multisigMappings")]
-	fn get_multisig_mappings(&self, owner: &Address) -> MapMapper<Self::Storage, Address, BoxedBytes>;
-
-	#[endpoint(registerMultisig)]
-	fn register_multisig(&self, multisig_address: Address, description: BoxedBytes) -> SCResult<()> {
-		let my_address = self.get_caller();
-
-		self.get_multisig_mappings(&my_address)
-			.insert(multisig_address, description);
-
-		Ok(())
-	}
-
-	#[endpoint(unregisterMultisig)]
-	fn unregister_multisig(&self, multisig_address: Address) -> SCResult<()> {
-		let my_address = self.get_caller();
-
-		self.get_multisig_mappings(&my_address)
-			.remove(&multisig_address);
-
-		Ok(())
-	}
-
-	#[view(getMultisigAddresses)]
-	fn get_multisig_addresses(&self) -> Vec<Address> {
-		let my_address = self.get_caller();
-		
-		self.get_multisig_mappings(&my_address).keys().collect()
-	}
-
-	#[view(getMultisigDescription)]
-	fn get_multisig_description(&self, multisig_address: &Address) -> BoxedBytes {
-		let my_address = self.get_caller();
-
-		self.get_multisig_mappings(&my_address)
-			.get(&multisig_address)
-			.unwrap_or_else(|| BoxedBytes::empty())
 	}
 }
