@@ -44,6 +44,8 @@ members = [
   "contracts/examples/multisig/abi",
   "contracts/examples/multisig-manager",
   "contracts/examples/multisig-manager/abi",
+  "contracts/examples/multisig-deployer",
+  "contracts/examples/multisig-deployer/abi",
   "contracts/examples/non-fungible-tokens",
   "contracts/examples/non-fungible-tokens/abi",
   "contracts/examples/ping-pong-egld",
