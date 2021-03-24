@@ -17,13 +17,6 @@ pub trait MultisigManager {
 	#[storage_mapper("multisigNames")]
 	fn get_multisig_names(&self) -> MapMapper<Self::Storage, Address, BoxedBytes>;
 
-	fn copy_address(&self, address: &Address) -> Address {
-		let array: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-		address.copy_to_array(array);
-
-		Address::from(array)
-	}
-
 	fn register_multisig_user_contract(&self, user_address: &Address, contract_address: Address) {
 		self.get_multisig_list(user_address).insert(contract_address, BoxedBytes::empty());
 	}
