@@ -15,7 +15,7 @@ pub trait MultisigDeployer {
 	}
 
 	#[endpoint(deployContract)]
-	fn deploy_contract(&self, name: BoxedBytes, quorum: BoxedBytes, #[var_args] board: VarArgs<Address>) -> SCResult<Address> {
+	fn deploy_contract(&self, quorum: BoxedBytes, #[var_args] board: VarArgs<Address>) -> SCResult<Address> {
 		let amount = BigUint::from(0u32);
 		
 		let array = [
