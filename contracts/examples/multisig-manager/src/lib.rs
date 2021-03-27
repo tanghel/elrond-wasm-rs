@@ -11,6 +11,13 @@ elrond_wasm::imports!();
 /// See the readme file for more detailed documentation.
 #[elrond_wasm_derive::contract(MultisigManagerImpl)]
 pub trait MultisigManager {
+	fn copy_address(&self, address: &Address) -> Address {
+		let array: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+		address.copy_to_array(array);
+
+		Address::from(array)
+	}
+
 	#[storage_mapper("multisigList")]
 	fn get_multisig_list(&self, owner: &Address) -> MapMapper<Self::Storage, Address, BoxedBytes>;
 
@@ -23,6 +30,13 @@ pub trait MultisigManager {
 
 	fn unregister_multisig_user_contract(&self, user_address: &Address, contract_address: &Address) {
 		self.get_multisig_list(user_address).remove(contract_address);
+	}
+
+	#[endpoint(registerMultisigName)]
+	fn register_multisig_name(&self, address: Address, name: BoxedBytes) -> SCResult<()> {
+		self.get_multisig_names().insert(self.copy_address(&address), name);
+
+		Ok(())
 	}
 
 	#[endpoint(registerMultisigContract)]
@@ -72,7 +86,7 @@ pub trait MultisigManager {
 
 		let mut result = Vec::new();
 		for address in addresses {
-			let name = self.get_multisig_contract_name(&address);
+			let name = self.get_multisig_contract_name(self.copy_address(&address));
 
 			result.push(MultisigContractInfo {
 				address,
@@ -84,7 +98,7 @@ pub trait MultisigManager {
 	}
 
 	#[view(getMultisigContractName)]
-	fn get_multisig_contract_name(&self, multisig_address: &Address) -> BoxedBytes {
+	fn get_multisig_contract_name(&self, multisig_address: Address) -> BoxedBytes {
 		self.get_multisig_names()
 			.get(&multisig_address)
 			.unwrap_or_else(|| BoxedBytes::empty())
