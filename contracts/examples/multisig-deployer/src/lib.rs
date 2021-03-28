@@ -30693,10 +30693,7 @@ pub trait MultisigDeployer {
 		];
 		let code = BoxedBytes::from(&array[..]);
 
-		let mut code_metadata = CodeMetadata::DEFAULT;
-		code_metadata |= CodeMetadata::UPGRADEABLE;
-		code_metadata |= CodeMetadata::PAYABLE;
-		code_metadata |= CodeMetadata::READABLE;
+		let code_metadata = CodeMetadata::DEFAULT;
 
 		let gas_left = self.get_gas_left();
 

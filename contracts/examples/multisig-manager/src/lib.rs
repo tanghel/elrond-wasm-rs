@@ -34,6 +34,11 @@ pub trait MultisigManager {
 
 	#[endpoint(registerMultisigName)]
 	fn register_multisig_name(&self, address: Address, name: BoxedBytes) -> SCResult<()> {
+		require!(
+			!self.get_multisig_names().contains_key(&address),
+			"Multisig name already registered!"
+		);
+
 		self.get_multisig_names().insert(self.copy_address(&address), name);
 
 		Ok(())
