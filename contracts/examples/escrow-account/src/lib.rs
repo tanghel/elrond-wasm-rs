@@ -30,8 +30,6 @@ pub trait EscrowAccount {
 
 	#[endpoint(payoutTransaction)]
 	fn payout_transaction(&self, transaction_id: usize) -> SCResult<()> {
-		let buyer = self.get_caller();
-
 		require!(
 			!self.transactions_mapper().item_is_empty_unchecked(transaction_id), 
 			"Could not identify transaction"
@@ -39,6 +37,7 @@ pub trait EscrowAccount {
 
 		let transaction = self.transactions_mapper().get(transaction_id);
 
+		let buyer = self.get_caller();
 		require!(transaction.buyer == buyer, "Only the buyer can trigger payout!");
 
 		let to = transaction.seller;
@@ -51,10 +50,31 @@ pub trait EscrowAccount {
 		Ok(())
 	}
 
+	#[endpoint(recallTransaction)]
+	fn recall_transaction(&self, transaction_id: usize) -> SCResult<()> {
+		require!(
+			!self.transactions_mapper().item_is_empty_unchecked(transaction_id), 
+			"Could not identify transaction"
+		);
+
+		let transaction = self.transactions_mapper().get(transaction_id);
+
+		let buyer = self.get_caller();
+		require!(transaction.buyer == buyer, "Only the buyer can trigger recall!");
+
+		let amount = transaction.amount;
+		let data = BoxedBytes::empty();
+
+		self.transactions_mapper().clear_entry_unchecked(transaction_id);
+		self.send().direct_egld(&buyer, &amount, data.as_slice());
+
+		Ok(())
+	}
+
 	#[view(getTransactionBuyer)]
 	fn get_transaction_buyer(&self, transaction_id: usize) -> Address {
 		let transaction = self.transactions_mapper().get_unchecked(transaction_id);
-		Ok(transaction.buyer)
+		transaction.buyer
 	}
 
 	#[view(getTransactionSeller)]
