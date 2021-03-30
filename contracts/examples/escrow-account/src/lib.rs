@@ -4,88 +4,84 @@ elrond_wasm::imports!();
 
 mod transaction;
 
-use transaction::Transaction;
+use transaction::{Contract, Milestone, ContractStatus, MilestoneStatus, Party};
 
 #[elrond_wasm_derive::contract(EscrowAccountImpl)]
 pub trait EscrowAccount {
-	#[storage_mapper("transactions")]
-	fn transactions_mapper(&self) -> VecMapper<Self::Storage, Transaction<BigUint>>;
+	#[storage_mapper("contracts")]
+	fn contracts_mapper(&self) -> VecMapper<Self::Storage, Contract>;
 
-	#[endpoint(createTransaction)]
+	#[endpoint(propose)]
+	fn propose(&self, data: BoxedBytes, party: Party) -> SCResult<usize> {
+		let status = ContractStatus::Proposed;
+
+		if party == Party::Buyer {
+			let buyer = self.get_caller();
+			let seller = Address::zero();
+			let buyer_copy = data;
+			let seller_copy = BoxedBytes::empty();
+
+			let contract = Contract
+			{
+				buyer,
+				seller,
+				buyer_copy,
+				seller_copy,
+				status
+			};
+
+			let contract_id = self.contracts_mapper().push(&contract);
+			Ok(contract_id)
+		} else if party == Party::Seller {
+			let buyer = Address::zero();
+			let seller = self.get_caller();
+			let buyer_copy = BoxedBytes::empty();
+			let seller_copy = data;
+
+			let contract = Contract
+			{
+				buyer,
+				seller,
+				buyer_copy,
+				seller_copy,
+				status
+			};
+
+			let contract_id = self.contracts_mapper().push(&contract);
+			Ok(contract_id)
+		} else {
+			Ok(0)
+		}
+	}
+
+	#[endpoint(sign)]
 	#[payable("EGLD")]
-	fn create_transaction(&self, #[payment] amount: BigUint, seller: Address) -> SCResult<usize> {
-		let buyer = self.get_caller();
-
-		let transaction = Transaction
-		{
-			buyer,
-			seller,
-			amount
-		};
-
-		let transaction_id = self.transactions_mapper().push(&transaction);
-
-		Ok(transaction_id)
-	}
-
-	#[endpoint(payoutTransaction)]
-	fn payout_transaction(&self, transaction_id: usize) -> SCResult<()> {
-		require!(
-			!self.transactions_mapper().item_is_empty_unchecked(transaction_id), 
-			"Could not identify transaction"
-		);
-
-		let transaction = self.transactions_mapper().get(transaction_id);
-
-		let buyer = self.get_caller();
-		require!(transaction.buyer == buyer, "Only the buyer can trigger payout!");
-
-		let to = transaction.seller;
-		let amount = transaction.amount;
-		let data = BoxedBytes::empty();
-
-		self.transactions_mapper().clear_entry_unchecked(transaction_id);
-		self.send().direct_egld(&to, &amount, data.as_slice());
-
+	fn sign(&self, contract_id: usize, data: BoxedBytes) -> SCResult<()> {
 		Ok(())
 	}
 
-	#[endpoint(recallTransaction)]
-	fn recall_transaction(&self, transaction_id: usize) -> SCResult<()> {
-		require!(
-			!self.transactions_mapper().item_is_empty_unchecked(transaction_id), 
-			"Could not identify transaction"
-		);
-
-		let transaction = self.transactions_mapper().get(transaction_id);
-
-		let buyer = self.get_caller();
-		require!(transaction.buyer == buyer, "Only the buyer can trigger recall!");
-
-		let amount = transaction.amount;
-		let data = BoxedBytes::empty();
-
-		self.transactions_mapper().clear_entry_unchecked(transaction_id);
-		self.send().direct_egld(&buyer, &amount, data.as_slice());
-
+	#[endpoint(cancel)]
+	fn cancel(&self, contract_id: usize) -> SCResult<()> {
 		Ok(())
 	}
 
-	#[view(getTransactionBuyer)]
-	fn get_transaction_buyer(&self, transaction_id: usize) -> Address {
-		let transaction = self.transactions_mapper().get_unchecked(transaction_id);
-		transaction.buyer
+	#[endpoint(refund)]
+	fn refund(&self, contract_id: usize) -> SCResult<()> {
+		Ok(())
 	}
 
-	#[view(getTransactionSeller)]
-	fn get_transaction_seller(&self, transaction_id: usize) -> Address {
-		let transaction = self.transactions_mapper().get_unchecked(transaction_id);
-		transaction.seller
+	#[endpoint(paymentRelease)]
+	fn payment_release(&self, contract_id: usize, milestone_id: usize) -> SCResult<()> {
+		Ok(())
 	}
 
-	#[view(getTransactionAmount)]
-	fn get_transaction_amount(&self, transaction_id: usize) -> BigUint {
-		let transaction = self.transactions_mapper().get_unchecked(transaction_id);
-		transaction.amount
+	#[endpoint(paymentBlock)]
+	fn payment_block(&self, contract_id: usize, milestone_id: usize) -> SCResult<()> {
+		Ok(())
+	}
+
+	#[endpoint(paymentReceive)]
+	fn payment_receive(&self, contract_id: usize, milestone_id: usize) -> SCResult<()> {
+		Ok(())
 	}
 }
