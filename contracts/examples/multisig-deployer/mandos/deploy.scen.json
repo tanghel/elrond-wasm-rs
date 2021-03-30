@@ -1,0 +1,73 @@
+{
+    "comment": "add then check",
+    "steps": [
+        {
+            "step": "externalSteps",
+            "path": "steps/init_accounts.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/deploy.steps.json"
+        },
+        {
+            "step": "setState",
+            "newAddresses": [
+                {
+                    "creatorAddress": "address:deployer",
+                    "creatorNonce": "0",
+                    "newAddress": "address:multisig"
+                }
+            ]
+        },
+        {
+            "step": "scCall",
+            "txId": "deploy",
+            "tx": {
+                "from": "address:owner",
+                "to": "address:deployer",
+                "value": "0",
+                "function": "deployContract",
+                "arguments": [
+                    "2",
+                    "address:alice",
+                    "address:bob",
+                    "address:charlie"
+                ],
+                "gasLimit": "200,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": ["address:multisig"],
+                "status": "",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "checkState",
+            "accounts": {
+                "address:multisig": {
+                    "nonce": "0",
+                    "balance": "0",
+                    "storage": {
+                        "''quorum": "2",
+                        "``user_count": "3",
+                        "``num_board_members": "3",
+                        "``user_address_to_id|address:alice": "1",
+                        "``user_address_to_id|address:bob": "2",
+                        "``user_address_to_id|address:charlie": "3",
+                        "``user_id_to_address|u32:1": "address:alice",
+                        "``user_id_to_address|u32:2": "address:bob",
+                        "``user_id_to_address|u32:3": "address:charlie",
+                        "``user_role|u32:1": "2",
+                        "``user_role|u32:2": "2",
+                        "``user_role|u32:3": "2"
+                    },
+                    "code": "file:../test-contracts/multisig.wasm"
+                },
+                "+": ""
+            }
+        }
+    ]
+}
