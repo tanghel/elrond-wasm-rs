@@ -30716,14 +30716,6 @@ pub trait MultisigDeployer {
 			&arg_buffer,
 		);
 
-		/*
-		for board_address in board_addresses {
-			self.register_multisig_user_contract(&board_address, self.copy_address(&new_address));
-		}
-
-		self.get_multisig_names().insert(self.copy_address(&new_address), name);
-		*/
-
 		Ok(new_address)
 	}
 }
