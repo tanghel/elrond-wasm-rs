@@ -1,0 +1,17 @@
+{
+    "comment": "add then check",
+    "steps": [
+        {
+            "step": "externalSteps",
+            "path": "steps/initAccounts.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/deploy.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/registerContractAliceSimple.steps.json"
+        }
+    ]
+}

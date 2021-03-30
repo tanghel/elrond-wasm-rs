@@ -29,13 +29,19 @@
                     "storage": {},
                     "code": ""
                 },
-                "address:dan": {
+                "address:multisig1": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {},
                     "code": ""
                 },
-                "address:paul": {
+                "address:multisig2": {
+                    "nonce": "0",
+                    "balance": "0",
+                    "storage": {},
+                    "code": ""
+                },
+                "address:multisig3": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {},
@@ -46,7 +52,7 @@
                 {
                     "creatorAddress": "address:owner",
                     "creatorNonce": "0",
-                    "newAddress": "address:multisig"
+                    "newAddress": "address:manager"
                 }
             ]
         }

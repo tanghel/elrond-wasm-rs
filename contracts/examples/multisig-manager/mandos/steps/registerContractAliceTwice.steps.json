@@ -4,12 +4,56 @@
     "steps": [
         {
             "step": "scCall",
-            "txId": "rem-alice-prop",
+            "txId": "register-contract-multisig1",
             "tx": {
-                "from": "address:paul",
-                "to": "address:multisig",
+                "from": "address:alice",
+                "to": "address:manager",
                 "value": "0",
-                "function": "proposeRemoveUser",
+                "function": "registerMultisigContract",
+                "arguments": [
+                    "address:multisig1"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [],
+                "status": "",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "scCall",
+            "txId": "register-contract-multisig1-again",
+            "tx": {
+                "from": "address:alice",
+                "to": "address:manager",
+                "value": "0",
+                "function": "registerMultisigContract",
+                "arguments": [
+                    "address:multisig1"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [],
+                "status": "",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "scCall",
+            "txId": "verify-register-address",
+            "tx": {
+                "from": "address:alice",
+                "to": "address:manager",
+                "value": "0",
+                "function": "getMultisigContractAddresses",
                 "arguments": [
                     "address:alice"
                 ],
@@ -17,67 +61,9 @@
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["3"],
-                "status": "",
-                "logs": [],
-                "gas": "*",
-                "refund": "*"
-            }
-        },
-        {
-            "step": "scCall",
-            "txId": "rem-alice-sign-bob",
-            "tx": {
-                "from": "address:bob",
-                "to": "address:multisig",
-                "value": "0",
-                "function": "sign",
-                "arguments": ["3"],
-                "gasLimit": "50,000,000",
-                "gasPrice": "0"
-            },
-            "expect": {
-                "out": [],
-                "status": "",
-                "logs": [],
-                "gas": "*",
-                "refund": "*"
-            }
-        },
-        {
-            "step": "scCall",
-            "txId": "rem-alice-sign-charlie",
-            "tx": {
-                "from": "address:charlie",
-                "to": "address:multisig",
-                "value": "0",
-                "function": "sign",
-                "arguments": ["3"],
-                "gasLimit": "50,000,000",
-                "gasPrice": "0"
-            },
-            "expect": {
-                "out": [],
-                "status": "",
-                "logs": [],
-                "gas": "*",
-                "refund": "*"
-            }
-        },
-        {
-            "step": "scCall",
-            "txId": "rem-alice--perform",
-            "tx": {
-                "from": "address:paul",
-                "to": "address:multisig",
-                "value": "0",
-                "function": "performAction",
-                "arguments": ["3"],
-                "gasLimit": "50,000,000",
-                "gasPrice": "0"
-            },
-            "expect": {
-                "out": [],
+                "out": [
+                    "address:multisig1"
+                ],
                 "status": "",
                 "logs": [],
                 "gas": "*",

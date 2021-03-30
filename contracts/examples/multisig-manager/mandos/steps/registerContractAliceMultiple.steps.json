@@ -1,49 +1,22 @@
 {
-    "gasSchedule": "v2",
+    "name": "adder",
+    "comment": "add then check",
     "steps": [
         {
-            "step": "externalSteps",
-            "path": "steps/init_accounts.steps.json"
-        },
-        {
-            "step": "externalSteps",
-            "path": "steps/deploy.steps.json"
-        },
-        {
             "step": "scCall",
-            "txId": "change-quorum-propose",
+            "txId": "register-contract-multisig1",
             "tx": {
                 "from": "address:alice",
-                "to": "address:multisig",
+                "to": "address:manager",
                 "value": "0",
-                "function": "proposeChangeQuorum",
+                "function": "registerMultisigContract",
                 "arguments": [
-                    "4"
+                    "address:multisig1"
                 ],
                 "gasLimit": "50,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["1"],
-                "status": "",
-                "logs": [],
-                "gas": "*",
-                "refund": "*"
-            }
-        },
-        {
-            "step": "scCall",
-            "txId": "change-quorum-sign-bob",
-            "tx": {
-                "from": "address:bob",
-                "to": "address:multisig",
-                "value": "0",
-                "function": "sign",
-                "arguments": ["1"],
-                "gasLimit": "50,000,000",
-                "gasPrice": "0"
-            },
-            "expect": {
                 "out": [],
                 "status": "",
                 "logs": [],
@@ -53,20 +26,21 @@
         },
         {
             "step": "scCall",
-            "txId": "change-quorum-perform",
+            "txId": "register-contract-multisig2",
             "tx": {
                 "from": "address:alice",
-                "to": "address:multisig",
+                "to": "address:manager",
                 "value": "0",
-                "function": "performAction",
-                "arguments": ["1"],
+                "function": "registerMultisigContract",
+                "arguments": [
+                    "address:multisig2"
+                ],
                 "gasLimit": "50,000,000",
                 "gasPrice": "0"
             },
             "expect": {
                 "out": [],
-                "status": "4",
-                "message": "str:quorum cannot exceed board size",
+                "status": "",
                 "logs": [],
                 "gas": "*",
                 "refund": "*"
@@ -74,19 +48,43 @@
         },
         {
             "step": "scCall",
-            "txId": "getQuorum",
+            "txId": "register-contract-multisig3",
             "tx": {
-                "from": "address:owner",
-                "to": "address:multisig",
+                "from": "address:alice",
+                "to": "address:manager",
                 "value": "0",
-                "function": "getQuorum",
-                "arguments": [],
+                "function": "registerMultisigContract",
+                "arguments": [
+                    "address:multisig3"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [],
+                "status": "",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "scCall",
+            "txId": "verify-register-addresses",
+            "tx": {
+                "from": "address:alice",
+                "to": "address:manager",
+                "value": "0",
+                "function": "getMultisigContractAddresses",
+                "arguments": [
+                    "address:alice"
+                ],
                 "gasLimit": "50,000,000",
                 "gasPrice": "0"
             },
             "expect": {
                 "out": [
-                    "2"
+                    "address:multisig1|address:multisig2|address:multisig3"
                 ],
                 "status": "",
                 "logs": [],

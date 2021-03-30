@@ -1,9 +1,9 @@
 {
-    "gasSchedule": "v2",
+    "comment": "add then check",
     "steps": [
         {
             "step": "externalSteps",
-            "path": "steps/init_accounts.steps.json"
+            "path": "steps/initAccounts.steps.json"
         },
         {
             "step": "externalSteps",
@@ -11,19 +11,15 @@
         },
         {
             "step": "externalSteps",
-            "path": "steps/add_prop.steps.json"
+            "path": "steps/registerContractAliceSimple.steps.json"
         },
         {
             "step": "externalSteps",
-            "path": "steps/add_bm.steps.json"
+            "path": "steps/registerContractBobSimple.steps.json"
         },
         {
             "step": "externalSteps",
-            "path": "steps/rem_alice.steps.json"
-        },
-        {
-            "step": "externalSteps",
-            "path": "steps/sign_unsign_bad_action.steps.json"
+            "path": "steps/registerContractCharlieSimple.steps.json"
         }
     ]
 }

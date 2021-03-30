@@ -1,0 +1,61 @@
+{
+    "comment": "add then check",
+    "steps": [
+        {
+            "step": "externalSteps",
+            "path": "steps/initAccounts.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/deploy.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/registerContractAliceSimple.steps.json"
+        },
+        {
+            "step": "scCall",
+            "txId": "unregister-contract-multisig1",
+            "tx": {
+                "from": "address:alice",
+                "to": "address:manager",
+                "value": "0",
+                "function": "unregisterMultisigContract",
+                "arguments": [
+                    "address:multisig1"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [],
+                "status": "",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "scCall",
+            "txId": "verify-register-address",
+            "tx": {
+                "from": "address:alice",
+                "to": "address:manager",
+                "value": "0",
+                "function": "getMultisigContractAddresses",
+                "arguments": [
+                    "address:alice"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [""],
+                "status": "",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        }
+    ]
+}

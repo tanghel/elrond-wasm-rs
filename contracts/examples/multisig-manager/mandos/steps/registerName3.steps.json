@@ -1,0 +1,53 @@
+{
+    "name": "adder",
+    "comment": "add then check",
+    "steps": [
+        {
+            "step": "scCall",
+            "txId": "register-name3",
+            "tx": {
+                "from": "address:alice",
+                "to": "address:manager",
+                "value": "0",
+                "function": "registerMultisigName",
+                "arguments": [
+                    "address:multisig3",
+                    "str:MyThirdMultisig"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [],
+                "status": "",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        },
+        {
+            "step": "scCall",
+            "txId": "verify-register-name3",
+            "tx": {
+                "from": "address:alice",
+                "to": "address:manager",
+                "value": "0",
+                "function": "getMultisigContractName",
+                "arguments": [
+                    "address:multisig3"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [
+                    "str:MyThirdMultisig"
+                ],
+                "status": "",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        }
+    ]
+}

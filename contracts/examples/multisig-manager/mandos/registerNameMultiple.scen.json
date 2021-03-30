@@ -1,0 +1,25 @@
+{
+    "comment": "add then check",
+    "steps": [
+        {
+            "step": "externalSteps",
+            "path": "steps/initAccounts.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/deploy.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/registerName1.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/registerName2.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/registerName3.steps.json"
+        }
+    ]
+}

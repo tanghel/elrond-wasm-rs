@@ -1,0 +1,41 @@
+{
+    "comment": "add then check",
+    "steps": [
+        {
+            "step": "externalSteps",
+            "path": "steps/initAccounts.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/deploy.steps.json"
+        },
+        {
+            "step": "externalSteps",
+            "path": "steps/registerName1.steps.json"
+        },
+        {
+            "step": "scCall",
+            "txId": "register-name1-duplicated",
+            "tx": {
+                "from": "address:alice",
+                "to": "address:manager",
+                "value": "0",
+                "function": "registerMultisigName",
+                "arguments": [
+                    "address:multisig1",
+                    "str:MyFirstMultisig"
+                ],
+                "gasLimit": "50,000,000",
+                "gasPrice": "0"
+            },
+            "expect": {
+                "out": [],
+                "status": "4",
+                "message": "str:Multisig name already registered!",
+                "logs": [],
+                "gas": "*",
+                "refund": "*"
+            }
+        }
+    ]
+}
