@@ -5,25 +5,32 @@ elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
-pub struct Contract {
+pub struct Contract<BigUint: BigUintApi> {
 	pub buyer: Address,
 	pub seller: Address,
-	pub buyer_copy: BoxedBytes,
-	pub seller_copy: BoxedBytes,
-	pub status: ContractStatus,
+	pub refund_period: u64,
+	pub milestones: Vec<Milestone<BigUint>>
 }
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
 pub struct Milestone<BigUint: BigUintApi> {
 	pub amount: BigUint,
-	pub date: BigUint,
-	pub status: MilestoneStatus,
+	pub date: u64
 }
 
-#[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Clone, Copy, TypeAbi)]
-pub enum Party {
-	Buyer,
-	Seller
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
+pub struct ContractResult<BigUint: BigUintApi> {
+	pub buyer: Address,
+	pub seller: Address,
+	pub status: ContractStatus,
+	pub milestones: Vec<MilestoneResult<BigUint>>
+}
+
+#[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
+pub struct MilestoneResult<BigUint: BigUintApi> {
+	pub amount: BigUint,
+	pub date: u64,
+	pub status: MilestoneStatus,
 }
 
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Clone, Copy, TypeAbi)]
@@ -37,7 +44,7 @@ pub enum MilestoneStatus {
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Clone, Copy, TypeAbi)]
 pub enum ContractStatus {
 	Proposed,
-	Signed,
+	Ongoing,
 	Cancelled,
 	Refunded,
 	Fulfilled
