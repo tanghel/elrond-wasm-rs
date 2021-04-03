@@ -22,15 +22,16 @@ pub struct Milestone<BigUint: BigUintApi> {
 pub struct ContractResult<BigUint: BigUintApi> {
 	pub buyer: Address,
 	pub seller: Address,
-	pub status: ContractStatus,
-	pub milestones: Vec<MilestoneResult<BigUint>>
+	pub refund_period: u64,
+	pub milestones: Vec<MilestoneResult<BigUint>>,
+	pub status: ContractStatus
 }
 
 #[derive(NestedEncode, NestedDecode, TopEncode, TopDecode, TypeAbi)]
 pub struct MilestoneResult<BigUint: BigUintApi> {
 	pub amount: BigUint,
 	pub date: u64,
-	pub status: MilestoneStatus,
+	pub status: MilestoneStatus
 }
 
 #[derive(TopEncode, TopDecode, NestedEncode, NestedDecode, PartialEq, Clone, Copy, TypeAbi)]

@@ -3,7 +3,7 @@
 elrond_wasm::imports!();
 
 mod contract;
-use contract::{Contract, Milestone, ContractStatus, MilestoneStatus};
+use contract::{Contract, Milestone, ContractStatus, MilestoneStatus, ContractResult, MilestoneResult};
 
 #[elrond_wasm_derive::contract(EscrowAccountImpl)]
 pub trait EscrowAccount {
@@ -39,7 +39,7 @@ pub trait EscrowAccount {
 	fn set_milestone_index(&self, contract_id: usize, index: usize);
 
 	#[storage_mapper("contracts_by_address")]
-	fn contracts_by_address(&self, owner: &Address) -> VecMapper<Self::Storage, usize>;
+	fn get_contracts_by_address(&self, owner: &Address) -> VecMapper<Self::Storage, usize>;
 
 	#[endpoint(propose)]
 	fn propose(&self, contract: Contract<BigUint>) -> SCResult<usize> {
@@ -49,7 +49,51 @@ pub trait EscrowAccount {
 		self.set_milestone_status(contract_id, MilestoneStatus::Unpaid);
 		self.set_milestone_index(contract_id, 1usize);
 
+		self.get_contracts_by_address(&contract.buyer).push(&contract_id);
+		self.get_contracts_by_address(&contract.seller).push(&contract_id);
+
 		Ok(contract_id)
+	}
+
+	#[view(getContractsForAddress)]
+	fn get_contracts_for_address(&self, address: Address) -> MultiResultVec<ContractResult<BigUint>> {
+		let mut contracts = Vec::new();
+
+		let contract_ids = self.get_contracts_by_address(&address);
+		for contract_index in 1..=contract_ids.len() {
+			let contract_id = contract_ids.get(contract_index);
+			let contract = self.get_contracts().get(contract_id);
+			let contract_status = self.get_contract_status(contract_id);
+			let milestone_index = self.get_milestone_index(contract_id);
+			let current_milestone_status = self.get_milestone_status(contract_id);
+
+			let mut milestones = Vec::new();
+			let mut index = 1;
+			for milestone in contract.milestones {
+				let mut milestone_status = current_milestone_status;
+				if index < milestone_index {
+					milestone_status = MilestoneStatus::Paid;
+				}
+
+				milestones.push(MilestoneResult {
+					amount: milestone.amount,
+					date: milestone.date,
+					status: milestone_status
+				});
+
+				index = index + 1;
+			}
+
+			contracts.push(ContractResult {
+				buyer: contract.buyer,
+				seller: contract.seller,
+				refund_period: contract.refund_period,
+				milestones: milestones.into(),
+				status: contract_status
+			});
+		}
+
+		contracts.into()
 	}
 
 	#[endpoint(start)]
