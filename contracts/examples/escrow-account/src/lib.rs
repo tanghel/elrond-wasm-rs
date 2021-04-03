@@ -2,9 +2,8 @@
 
 elrond_wasm::imports!();
 
-mod transaction;
-
-use transaction::{Contract, Milestone, ContractStatus, MilestoneStatus};
+mod contract;
+use contract::{Contract, Milestone, ContractStatus, MilestoneStatus};
 
 #[elrond_wasm_derive::contract(EscrowAccountImpl)]
 pub trait EscrowAccount {
@@ -38,6 +37,9 @@ pub trait EscrowAccount {
 
 	#[storage_set("milestone_index")]
 	fn set_milestone_index(&self, contract_id: usize, index: usize);
+
+	#[storage_mapper("contracts_by_address")]
+	fn contracts_by_address(&self, owner: &Address) -> VecMapper<Self::Storage, usize>;
 
 	#[endpoint(propose)]
 	fn propose(&self, contract: Contract<BigUint>) -> SCResult<usize> {
@@ -243,8 +245,6 @@ pub trait EscrowAccount {
 				return 0;
 			}
 
-			let contract_cancelled_timestamp = self.get_contract_cancelled_timestamp(contract_id);
-			let refund_period = contract.refund_period;
 			let now = self.get_block_timestamp();
 
 			if milestone.date > now {
