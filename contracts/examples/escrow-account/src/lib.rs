@@ -203,9 +203,12 @@ pub trait EscrowAccount {
 
 		if let Some(milestone) = self.get_milestone(contract_id) {
 			let milestone_status = self.get_milestone_status(contract_id);
+			
+			let is_blocked = milestone_status == MilestoneStatus::Blocked;
+			require!(!is_blocked, "Milestone is blocked!");
+	
 			let is_past_date = milestone.date > 0 && self.get_block_timestamp() >= milestone.date;
 			let is_released = milestone_status == MilestoneStatus::Released;
-	
 			require!(is_released || is_past_date, "Milestone is not released yet and/or target date not reached!");
 	
 			self.send().direct_egld(&contract.seller, &milestone.amount, b"Contract payment");
