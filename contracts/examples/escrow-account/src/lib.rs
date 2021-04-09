@@ -42,7 +42,15 @@ pub trait EscrowAccount {
 	fn get_contracts_by_address(&self, owner: &Address) -> VecMapper<Self::Storage, usize>;
 
 	#[endpoint(propose)]
-	fn propose(&self, contract: Contract<BigUint>) -> SCResult<usize> {
+	fn propose(&self, buyer: Address, seller: Address, judge: Address, refund_period: u64, #[var_args] milestones: VarArgs<Milestone<BigUint>>) -> SCResult<usize> {
+		let contract = Contract {
+			buyer,
+			seller,
+			judge,
+			refund_period,
+			milestones: milestones.into_vec()
+		};
+
 		let contract_id = self.get_contracts().push(&contract);
 
 		self.set_contract_status(contract_id, ContractStatus::Proposed);
@@ -127,8 +135,46 @@ pub trait EscrowAccount {
 		let contract_status = self.get_contract_status(contract_id);
 		require!(contract_status == ContractStatus::Ongoing, "Contract status must be ongoing!");
 
+		require!(contract.judge == Address::zero(), "The current contract a judge appointed. Cancel not possible, only dispute is possible.");
+
 		self.set_contract_status(contract_id, ContractStatus::Cancelled);
 		self.set_contract_cancelled_timestamp(contract_id, self.get_block_timestamp());
+
+		Ok(())
+	}
+
+	#[endpoint(dispute)]
+	fn dispute(&self, contract_id: usize) -> SCResult<()> {
+		let contract = self.get_contracts().get(contract_id);
+
+		require!(contract.buyer == self.get_caller() || contract.seller == self.get_caller(), "Only the buyer can request contract dispute!");
+
+		let contract_status = self.get_contract_status(contract_id);
+		require!(contract_status == ContractStatus::Ongoing, "Contract status must be ongoing!");
+
+		require!(contract.judge != Address::zero(), "The current contract has no judge appointed!");
+
+		self.set_contract_status(contract_id, ContractStatus::Disputed);
+
+		Ok(())
+	}
+
+	#[endpoint(clarify)]
+	fn clarify(&self, contract_id: usize, buyer_allocation: BigUint, seller_allocation: BigUint) -> SCResult<()> {
+		let contract = self.get_contracts().get(contract_id);
+
+		require!(contract.judge == self.get_caller(), "Only the judge can clarify a dispute!");
+
+		let contract_status = self.get_contract_status(contract_id);
+		require!(contract_status == ContractStatus::Disputed, "Contract status must be disputed!");
+
+		let total_allocation = buyer_allocation.clone().add(seller_allocation.clone());
+		require!(total_allocation == self.get_contract_remaining_amount(contract_id), "Invalid buyer/seller allocation amount");
+
+		self.send().direct_egld(&contract.buyer, &buyer_allocation, b"Allocation for contract dispute clarification");
+		self.send().direct_egld(&contract.seller, &seller_allocation, b"Allocation for contract dispute clarification");
+		
+		self.set_contract_status(contract_id, ContractStatus::Fulfilled);
 
 		Ok(())
 	}
@@ -149,17 +195,15 @@ pub trait EscrowAccount {
 
 		let amount_to_refund = self.get_contract_remaining_amount(contract_id);
 
-		let data = BoxedBytes::from(&b"Contract refund"[..]);
+		self.send().direct_egld(&contract.buyer, &amount_to_refund, b"Contract refund");
 
-		self.send().direct_egld(&contract.buyer, &amount_to_refund, data.as_slice());
-
-		self.set_contract_status(contract_id, ContractStatus::Refunded);
+		self.set_contract_status(contract_id, ContractStatus::Fulfilled);
 
 		Ok(())
 	}
 
-	#[endpoint(paymentRelease)]
-	fn payment_release(&self, contract_id: usize) -> SCResult<()> {
+	#[endpoint(release)]
+	fn milestone_release(&self, contract_id: usize) -> SCResult<()> {
 		let contract = self.get_contracts().get(contract_id);
 
 		require!(contract.buyer == self.get_caller(), "Only the buyer can release payment!");
@@ -175,8 +219,8 @@ pub trait EscrowAccount {
 		Ok(())
 	}
 
-	#[endpoint(paymentBlock)]
-	fn payment_block(&self, contract_id: usize) -> SCResult<()> {
+	#[endpoint(block)]
+	fn milestone_block(&self, contract_id: usize) -> SCResult<()> {
 		let contract = self.get_contracts().get(contract_id);
 
 		require!(contract.buyer == self.get_caller(), "Only the buyer can block payment!");
@@ -192,8 +236,8 @@ pub trait EscrowAccount {
 		Ok(())
 	}
 
-	#[endpoint(paymentReceive)]
-	fn payment_receive(&self, contract_id: usize) -> SCResult<()> {
+	#[endpoint(payout)]
+	fn milestone_payout(&self, contract_id: usize) -> SCResult<()> {
 		let contract = self.get_contracts().get(contract_id);
 
 		require!(contract.seller == self.get_caller(), "Only the seller can receive payment!");

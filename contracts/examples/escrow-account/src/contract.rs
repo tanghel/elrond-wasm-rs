@@ -8,6 +8,7 @@ elrond_wasm::derive_imports!();
 pub struct Contract<BigUint: BigUintApi> {
 	pub buyer: Address,
 	pub seller: Address,
+	pub judge: Address,
 	pub refund_period: u64,
 	pub milestones: Vec<Milestone<BigUint>>
 }
@@ -47,6 +48,6 @@ pub enum ContractStatus {
 	Proposed,
 	Ongoing,
 	Cancelled,
-	Refunded,
+	Disputed,
 	Fulfilled
 }
