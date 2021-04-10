@@ -2,7 +2,7 @@
 name = "multisig-manager"
 version = "0.0.0"
 authors = ["Traian Anghel <tanghel@live.com>"]
-edition = "2021"
+edition = "2018"
 publish = false
 
 [lib]
