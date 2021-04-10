@@ -1,8 +1,8 @@
 [package]
 name = "multisig-manager-wasm"
 version = "0.0.0"
-authors = ["Andrei Marinica <andrei.marinica@elrond.com>"]
-edition = "2018"
+authors = ["Traian Anghel <tanghel@live.com>"]
+edition = "2021"
 publish = false
 
 [lib]

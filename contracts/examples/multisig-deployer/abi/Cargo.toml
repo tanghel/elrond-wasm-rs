@@ -1,7 +1,7 @@
 [package]
 name = "multisig-deployer-abi"
 version = "0.0.0"
-authors = ["Andrei Marinica <andrei.marinica@elrond.com>"]
+authors = ["Traian Anghel <tanghel@live.com>"]
 edition = "2018"
 publish = false
 
