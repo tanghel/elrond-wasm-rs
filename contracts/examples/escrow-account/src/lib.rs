@@ -236,8 +236,8 @@ pub trait EscrowAccount {
 		Ok(())
 	}
 
-	#[endpoint(payout)]
-	fn milestone_payout(&self, contract_id: usize) -> SCResult<()> {
+	#[endpoint(claim)]
+	fn milestone_claim(&self, contract_id: usize) -> SCResult<()> {
 		let contract = self.get_contracts().get(contract_id);
 
 		require!(contract.seller == self.get_caller(), "Only the seller can receive payment!");
