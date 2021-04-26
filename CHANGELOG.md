@@ -16,7 +16,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [elrond-wasm 0.14.2] - 2021-03-29
 - Fixed contract call/callback logs in mandos-rs
 
-## [elrond-wasm 0.14.1] - 2021-03-25
+## [elrond-wasm 0.15.0] - 2021-03-25
 - Unified variadic arguments with respective variadic results
 
 ## [elrond-wasm 0.14.0, mandos 0.6.0, elrond-codec 0.5.1] - 2021-03-22

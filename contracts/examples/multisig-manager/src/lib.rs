@@ -58,7 +58,7 @@ pub trait MultisigManager {
 	/// If the same contract was registered before, no error is thrown and the address will remain registered once
 	#[endpoint(registerMultisigContract)]
 	fn register_multisig_contract(&self, contract_address: Address) -> SCResult<()> {
-		let user_address = self.get_caller();
+		let user_address = self.blockchain().get_caller();
 
 		self.register_multisig_user_contract(&user_address, contract_address);
 
@@ -68,7 +68,7 @@ pub trait MultisigManager {
 	/// Unregisters a multisig contract for a given wallet. If the contract was not registered yet, no error is returned.
 	#[endpoint(unregisterMultisigContract)]
 	fn unregister_multisig_contract(&self, contract_address: Address) -> SCResult<()> {
-		let user_address = self.get_caller();
+		let user_address = self.blockchain().get_caller();
 
 		self.unregister_multisig_user_contract(&user_address, &contract_address);
 
