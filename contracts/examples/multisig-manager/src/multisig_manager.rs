@@ -8,7 +8,7 @@ elrond_wasm::imports!();
 
 /// Multi-signature manager implementation.
 /// Associated names to multisig smart contracts, as well as multisg address lists for wallet addresses.
-#[elrond_wasm_derive::contract(MultisigManagerImpl)]
+#[elrond_wasm::contract]
 pub trait MultisigManager {
 	fn copy_address(&self, address: &Address) -> Address {
 		let array: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];

@@ -49,8 +49,6 @@ members = [
   "contracts/examples/multisig-manager/abi",
   "contracts/examples/multisig-deployer",
   "contracts/examples/multisig-deployer/abi",
-  "contracts/examples/non-fungible-tokens",
-  "contracts/examples/non-fungible-tokens/abi",
   "contracts/examples/nft-storage-prepay",
   "contracts/examples/nft-storage-prepay/abi",
   "contracts/examples/order-book/factory",

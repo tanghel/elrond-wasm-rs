@@ -1,11 +1,12 @@
 #![no_std]
 
 elrond_wasm::imports!();
+elrond_wasm::derive_imports!();
 
 /// Multi-signature deployer.
 /// Deploys the bytecode representation of a previously compiled deployer.
 /// Non-upgradeable, non-payable, non-readable by default
-#[elrond_wasm_derive::contract(MultisigDeployerImpl)]
+#[elrond_wasm::contract]
 pub trait MultisigDeployer {
 	fn copy_address(&self, address: &Address) -> Address {
 		let array: &mut [u8; 32] = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -17,7 +18,7 @@ pub trait MultisigDeployer {
 	/// Performs deployment. Returns address of newly deployed contract
 	#[endpoint(deployContract)]
 	fn deploy_contract(&self, quorum: BoxedBytes, #[var_args] board: VarArgs<Address>) -> SCResult<Address> {
-		let amount = BigUint::from(0u32);
+		let amount = Self::BigUint::from(0u32);
 		
 		let array = [
 			0x00 as u8,
@@ -33326,7 +33327,7 @@ pub trait MultisigDeployer {
 
 		let code_metadata = CodeMetadata::DEFAULT;
 
-		let gas_left = self.get_gas_left();
+		let gas_left = self.blockchain().get_gas_left();
 
 		let mut arg_buffer = ArgBuffer::new();
 		arg_buffer.push_argument_bytes(quorum.as_slice());
@@ -33345,7 +33346,7 @@ pub trait MultisigDeployer {
 			&code,
 			code_metadata,
 			&arg_buffer,
-		);
+		).ok_or("Contract deployment failed")?;
 
 		Ok(new_address)
 	}
