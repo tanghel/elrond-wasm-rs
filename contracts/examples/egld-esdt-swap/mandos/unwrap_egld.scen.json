@@ -10,10 +10,12 @@
             "txId": "unwrap-egld",
             "tx": {
                 "from": "address:user",
-                "to": "address:contract",
+                "to": "sc:egld-esdt-swap",
                 "value": "0",
-                "esdtTokenName": "str:WEGLD-abcdef",
-                "esdtValue": "300",
+                "esdt": {
+                    "tokenIdentifier": "str:WEGLD-abcdef",
+                    "value": "300"
+                },
                 "function": "unwrapEgld",
                 "arguments": [],
                 "gasLimit": "100,000,000",
@@ -24,9 +26,10 @@
                 "message": "",
                 "logs": [
                     {
-                        "address": "address:contract",
-                        "identifier": "str:unwrap-egld",
+                        "address": "sc:egld-esdt-swap",
+                        "endpoint": "str:unwrapEgld",
                         "topics": [
+                            "str:unwrap-egld",
                             "address:user"
                         ],
                         "data": "300"
@@ -47,7 +50,7 @@
                     },
                     "storage": {}
                 },
-                "address:contract": {
+                "sc:egld-esdt-swap": {
                     "nonce": "0",
                     "balance": "200",
                     "esdt": {

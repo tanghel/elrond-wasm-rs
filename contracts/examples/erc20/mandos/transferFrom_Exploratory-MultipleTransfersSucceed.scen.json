@@ -11,7 +11,7 @@
                     "storage": {},
                     "code": ""
                 },
-                "``busd__________________________s1": {
+                "sc:erc20": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
@@ -28,7 +28,7 @@
             "txId": "1",
             "tx": {
                 "from": "``account_1_____________________s1",
-                "to": "``busd__________________________s1",
+                "to": "sc:erc20",
                 "value": "0",
                 "function": "transferFrom",
                 "arguments": [
@@ -44,9 +44,10 @@
                 "status": "",
                 "logs": [
                     {
-                        "address": "``busd__________________________s1",
-                        "identifier": "str:transfer",
+                        "address": "sc:erc20",
+                        "endpoint": "str:transferFrom",
                         "topics": [
+                            "str:transfer",
                             "``coin_holder_1_________________sx",
                             "``coin_holder_2_________________sx"
                         ],
@@ -62,7 +63,7 @@
             "txId": "2",
             "tx": {
                 "from": "``account_1_____________________s1",
-                "to": "``busd__________________________s1",
+                "to": "sc:erc20",
                 "value": "0",
                 "function": "transferFrom",
                 "arguments": [
@@ -78,9 +79,10 @@
                 "status": "",
                 "logs": [
                     {
-                        "address": "``busd__________________________s1",
-                        "identifier": "str:transfer",
+                        "address": "sc:erc20",
+                        "endpoint": "str:transferFrom",
                         "topics": [
+                            "str:transfer",
                             "``coin_holder_1_________________sx",
                             "``account_6_____________________s1"
                         ],
@@ -96,7 +98,7 @@
             "txId": "3",
             "tx": {
                 "from": "``account_1_____________________s1",
-                "to": "``busd__________________________s1",
+                "to": "sc:erc20",
                 "value": "0",
                 "function": "transferFrom",
                 "arguments": [
@@ -112,9 +114,10 @@
                 "status": "",
                 "logs": [
                     {
-                        "address": "``busd__________________________s1",
-                        "identifier": "str:transfer",
+                        "address": "sc:erc20",
+                        "endpoint": "str:transferFrom",
                         "topics": [
+                            "str:transfer",
                             "``coin_holder_1_________________sx",
                             "``coin_holder_1_________________sx"
                         ],
@@ -130,7 +133,7 @@
             "txId": "4",
             "tx": {
                 "from": "``account_1_____________________s1",
-                "to": "``busd__________________________s1",
+                "to": "sc:erc20",
                 "value": "0",
                 "function": "transferFrom",
                 "arguments": [
@@ -146,9 +149,10 @@
                 "status": "",
                 "logs": [
                     {
-                        "address": "``busd__________________________s1",
-                        "identifier": "str:transfer",
+                        "address": "sc:erc20",
+                        "endpoint": "str:transferFrom",
                         "topics": [
+                            "str:transfer",
                             "``coin_holder_1_________________sx",
                             "``account_1_____________________s1"
                         ],
@@ -168,7 +172,7 @@
                     "storage": {},
                     "code": ""
                 },
-                "``busd__________________________s1": {
+                "sc:erc20": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {

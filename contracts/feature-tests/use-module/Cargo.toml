@@ -6,59 +6,48 @@ edition = "2018"
 publish = false
 
 [lib]
-path = "src/lib.rs"
+path = "src/use_module.rs"
 
 [features]
 wasm-output-mode = [
     "elrond-wasm-node",
-    "elrond-wasm-module-features-wasm",
-    "elrond-wasm-module-pause-wasm"
+    "elrond-wasm-module-dns/wasm-output-mode",
+    "elrond-wasm-module-esdt/wasm-output-mode",
+    "elrond-wasm-module-features/wasm-output-mode",
+    "elrond-wasm-module-governance/wasm-output-mode",
+    "elrond-wasm-module-pause/wasm-output-mode",
 ]
 
-default = [
-    "elrond-wasm-module-features-default",
-    "elrond-wasm-module-pause-default"
-]
+[dependencies.elrond-wasm-module-dns]
+version = "0.18.1"
+path = "../../modules/elrond-wasm-module-dns"
 
-[dependencies.elrond-wasm-module-features-wasm]
-package = "elrond-wasm-module-features"
-version = "0.15.0"
+[dependencies.elrond-wasm-module-esdt]
+version = "0.18.1"
+path = "../../modules/elrond-wasm-module-esdt"
+
+[dependencies.elrond-wasm-module-features]
+version = "0.18.1"
 path = "../../modules/elrond-wasm-module-features"
-features = ["wasm-output-mode"]
-optional = true
 
-[dependencies.elrond-wasm-module-features-default]
-package = "elrond-wasm-module-features"
-version = "0.15.0"
-path = "../../modules/elrond-wasm-module-features"
-optional = true
+[dependencies.elrond-wasm-module-governance]
+version = "0.18.1"
+path = "../../modules/elrond-wasm-module-governance"
 
-[dependencies.elrond-wasm-module-pause-wasm]
-package = "elrond-wasm-module-pause"
-version = "0.15.0"
+[dependencies.elrond-wasm-module-pause]
+version = "0.18.1"
 path = "../../modules/elrond-wasm-module-pause"
-features = ["wasm-output-mode"]
-optional = true
-
-[dependencies.elrond-wasm-module-pause-default]
-package = "elrond-wasm-module-pause"
-version = "0.15.0"
-path = "../../modules/elrond-wasm-module-pause"
-optional = true
 
 [dependencies.elrond-wasm]
-version = "0.15.0"
+version = "0.18.1"
 path = "../../../elrond-wasm"
-
-[dependencies.elrond-wasm-derive]
-version = "0.15.0"
-path = "../../../elrond-wasm-derive"
+features = ["derive"]
 
 [dependencies.elrond-wasm-node]
-version = "0.15.0"
+version = "0.18.1"
 path = "../../../elrond-wasm-node"
 optional = true
 
 [dev-dependencies.elrond-wasm-debug]
-version = "0.15.0"
+version = "0.18.1"
 path = "../../../elrond-wasm-debug"

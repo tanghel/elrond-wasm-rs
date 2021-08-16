@@ -6,24 +6,21 @@ edition = "2018"
 publish = false
 
 [lib]
-path = "src/lib.rs"
+path = "src/lottery.rs"
 
 [features]
 wasm-output-mode = [ "elrond-wasm-node",]
 
 [dependencies.elrond-wasm]
-version = "0.15.0"
+version = "0.18.1"
 path = "../../../elrond-wasm"
-
-[dependencies.elrond-wasm-derive]
-version = "0.15.0"
-path = "../../../elrond-wasm-derive"
+features = ["derive"]
 
 [dependencies.elrond-wasm-node]
-version = "0.15.0"
+version = "0.18.1"
 path = "../../../elrond-wasm-node"
 optional = true
 
 [dev-dependencies.elrond-wasm-debug]
-version = "0.15.0"
+version = "0.18.1"
 path = "../../../elrond-wasm-debug"
