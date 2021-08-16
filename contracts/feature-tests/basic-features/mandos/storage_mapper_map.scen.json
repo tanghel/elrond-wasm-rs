@@ -1,11 +1,11 @@
 {
     "name": "storage",
-    "gasSchedule": "v2",
+    "gasSchedule": "v3",
     "steps": [
         {
             "step": "setState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {},
@@ -24,7 +24,7 @@
             "txId": "before",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_keys",
                 "arguments": [],
@@ -44,7 +44,7 @@
             "txId": "first-insert",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_insert",
                 "arguments": [
@@ -67,14 +67,14 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
                         "``map_mapper.node_links|u32:1": "u32:0|u32:0",
                         "``map_mapper.value|u32:1": "123",
-                        "``map_mapper.node_id|123": "1",
-                        "``map_mapper.mapped|123": "456",
+                        "``map_mapper.node_id|u32:123": "1",
+                        "``map_mapper.mapped|u32:123": "456",
                         "``map_mapper.info": "u32:1|u32:1|u32:1|u32:1"
                     },
                     "code": "file:../output/basic-features.wasm"
@@ -92,7 +92,7 @@
             "txId": "check-map-keys-after-first-insert",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_keys",
                 "arguments": [],
@@ -114,7 +114,7 @@
             "txId": "check-map-values-after-first-insert",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_values",
                 "arguments": [],
@@ -136,7 +136,7 @@
             "txId": "second-insert",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_insert",
                 "arguments": [
@@ -161,7 +161,7 @@
             "txId": "check-map-keys-after-second-insert",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_keys",
                 "arguments": [],
@@ -184,7 +184,7 @@
             "txId": "check-map-values-after-second-insert",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_values",
                 "arguments": [],
@@ -205,7 +205,7 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
@@ -213,10 +213,10 @@
                         "``map_mapper.node_links|u32:2": "u32:1|u32:0",
                         "``map_mapper.value|u32:1": "123",
                         "``map_mapper.value|u32:2": "111",
-                        "``map_mapper.node_id|123": "1",
-                        "``map_mapper.node_id|111": "2",
-                        "``map_mapper.mapped|123": "456",
-                        "``map_mapper.mapped|111": "222",
+                        "``map_mapper.node_id|u32:123": "1",
+                        "``map_mapper.node_id|u32:111": "2",
+                        "``map_mapper.mapped|u32:123": "456",
+                        "``map_mapper.mapped|u32:111": "222",
                         "``map_mapper.info": "u32:2|u32:1|u32:2|u32:2"
                     },
                     "code": "file:../output/basic-features.wasm"
@@ -234,7 +234,7 @@
             "txId": "check-contains-after-second-insert",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_contains_key",
                 "arguments": [
@@ -258,7 +258,7 @@
             "txId": "first-remove",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_remove",
                 "arguments": [
@@ -280,14 +280,14 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
                         "``map_mapper.node_links|u32:2": "u32:0|u32:0",
                         "``map_mapper.value|u32:2": "111",
-                        "``map_mapper.node_id|111": "2",
-                        "``map_mapper.mapped|111": "222",
+                        "``map_mapper.node_id|u32:111": "2",
+                        "``map_mapper.mapped|u32:111": "222",
                         "``map_mapper.info": "u32:1|u32:2|u32:2|u32:2"
                     },
                     "code": "file:../output/basic-features.wasm"
@@ -305,7 +305,7 @@
             "txId": "second-remove",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_remove",
                 "arguments": [
@@ -327,7 +327,7 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {},
@@ -346,7 +346,7 @@
             "txId": "check-get-after-second-remove",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_get",
                 "arguments": [
@@ -368,7 +368,7 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {},
@@ -387,7 +387,7 @@
             "txId": "entry or default for a non-existing item",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_entry_or_default_update_increment",
                 "arguments": [
@@ -410,15 +410,15 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
                         "``map_mapper.info": "u32:1|u32:1|u32:1|u32:1",
                         "``map_mapper.node_links|u32:1": "u32:0|u32:0",
-                        "``map_mapper.node_id|123": "1",
+                        "``map_mapper.node_id|u32:123": "1",
                         "``map_mapper.value|u32:1": "123",
-                        "``map_mapper.mapped|123": "50"
+                        "``map_mapper.mapped|u32:123": "50"
                     },
                     "code": "file:../output/basic-features.wasm"
                 },
@@ -435,7 +435,7 @@
             "txId": "entry or default for the previously added item",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_entry_or_default_update_increment",
                 "arguments": [
@@ -458,15 +458,15 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
                         "``map_mapper.info": "u32:1|u32:1|u32:1|u32:1",
                         "``map_mapper.node_links|u32:1": "u32:0|u32:0",
-                        "``map_mapper.node_id|123": "1",
+                        "``map_mapper.node_id|u32:123": "1",
                         "``map_mapper.value|u32:1": "123",
-                        "``map_mapper.mapped|123": "92"
+                        "``map_mapper.mapped|u32:123": "92"
                     },
                     "code": "file:../output/basic-features.wasm"
                 },
@@ -483,7 +483,7 @@
             "txId": "entry or insert default for an existing entry shouldn't change anything, only return its existing value",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_entry_or_insert_default",
                 "arguments": [
@@ -506,15 +506,15 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
                         "``map_mapper.info": "u32:1|u32:1|u32:1|u32:1",
                         "``map_mapper.node_links|u32:1": "u32:0|u32:0",
-                        "``map_mapper.node_id|123": "1",
+                        "``map_mapper.node_id|u32:123": "1",
                         "``map_mapper.value|u32:1": "123",
-                        "``map_mapper.mapped|123": "92"
+                        "``map_mapper.mapped|u32:123": "92"
                     },
                     "code": "file:../output/basic-features.wasm"
                 },
@@ -531,7 +531,7 @@
             "txId": "entry or insert default for an non-existing entry should add it",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_entry_or_insert_default",
                 "arguments": [
@@ -554,19 +554,19 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
                         "``map_mapper.info": "u32:2|u32:1|u32:2|u32:2",
                         "``map_mapper.node_links|u32:1": "u32:0|u32:2",
-                        "``map_mapper.node_id|123": "1",
+                        "``map_mapper.node_id|u32:123": "1",
                         "``map_mapper.value|u32:1": "123",
-                        "``map_mapper.mapped|123": "92",
+                        "``map_mapper.mapped|u32:123": "92",
                         "``map_mapper.node_links|u32:2": "u32:1|u32:0",
-                        "``map_mapper.node_id|142": "2",
+                        "``map_mapper.node_id|u32:142": "2",
                         "``map_mapper.value|u32:2": "142",
-                        "``map_mapper.mapped|142": "60"
+                        "``map_mapper.mapped|u32:142": "60"
                     },
                     "code": "file:../output/basic-features.wasm"
                 },
@@ -583,7 +583,7 @@
             "txId": "entry or modify should simply increment the value if it exists",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_entry_and_modify",
                 "arguments": [
@@ -609,7 +609,7 @@
             "txId": "entry or modify should set the value if the entry doesn't exist",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_entry_and_modify",
                 "arguments": [
@@ -633,23 +633,23 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
                         "``map_mapper.info": "u32:3|u32:1|u32:3|u32:3",
                         "``map_mapper.node_links|u32:1": "u32:0|u32:2",
-                        "``map_mapper.node_id|123": "1",
+                        "``map_mapper.node_id|u32:123": "1",
                         "``map_mapper.value|u32:1": "123",
-                        "``map_mapper.mapped|123": "97",
+                        "``map_mapper.mapped|u32:123": "97",
                         "``map_mapper.node_links|u32:2": "u32:1|u32:3",
-                        "``map_mapper.node_id|142": "2",
+                        "``map_mapper.node_id|u32:142": "2",
                         "``map_mapper.value|u32:2": "142",
-                        "``map_mapper.mapped|142": "60",
+                        "``map_mapper.mapped|u32:142": "60",
                         "``map_mapper.node_links|u32:3": "u32:2|u32:0",
-                        "``map_mapper.node_id|167": "3",
+                        "``map_mapper.node_id|u32:167": "3",
                         "``map_mapper.value|u32:3": "167",
-                        "``map_mapper.mapped|167": "400"
+                        "``map_mapper.mapped|u32:167": "400"
                     },
                     "code": "file:../output/basic-features.wasm"
                 },
@@ -666,7 +666,7 @@
             "txId": "entry or insert with key should do nothing if the key already exists",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_entry_or_insert_with_key",
                 "arguments": [
@@ -691,7 +691,7 @@
             "txId": "entry or insert with key should add a new value if the key doesn't exist",
             "tx": {
                 "from": "address:an_account",
-                "to": "address:features_contract",
+                "to": "sc:basic-features",
                 "value": "0",
                 "function": "map_mapper_entry_or_insert_with_key",
                 "arguments": [
@@ -714,27 +714,27 @@
         {
             "step": "checkState",
             "accounts": {
-                "address:features_contract": {
+                "sc:basic-features": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
                         "``map_mapper.info": "u32:4|u32:1|u32:4|u32:4",
                         "``map_mapper.node_links|u32:1": "u32:0|u32:2",
-                        "``map_mapper.node_id|123": "1",
+                        "``map_mapper.node_id|u32:123": "1",
                         "``map_mapper.value|u32:1": "123",
-                        "``map_mapper.mapped|123": "97",
+                        "``map_mapper.mapped|u32:123": "97",
                         "``map_mapper.node_links|u32:2": "u32:1|u32:3",
-                        "``map_mapper.node_id|142": "2",
+                        "``map_mapper.node_id|u32:142": "2",
                         "``map_mapper.value|u32:2": "142",
-                        "``map_mapper.mapped|142": "60",
+                        "``map_mapper.mapped|u32:142": "60",
                         "``map_mapper.node_links|u32:3": "u32:2|u32:4",
-                        "``map_mapper.node_id|167": "3",
+                        "``map_mapper.node_id|u32:167": "3",
                         "``map_mapper.value|u32:3": "167",
-                        "``map_mapper.mapped|167": "400",
+                        "``map_mapper.mapped|u32:167": "400",
                         "``map_mapper.node_links|u32:4": "u32:3|u32:0",
-                        "``map_mapper.node_id|78": "4",
+                        "``map_mapper.node_id|u32:78": "4",
                         "``map_mapper.value|u32:4": "78",
-                        "``map_mapper.mapped|78": "1078"
+                        "``map_mapper.mapped|u32:78": "1078"
                     },
                     "code": "file:../output/basic-features.wasm"
                 },

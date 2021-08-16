@@ -17,7 +17,7 @@
                     "storage": {},
                     "code": ""
                 },
-                "``busd__________________________s1": {
+                "sc:erc20": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
@@ -33,7 +33,7 @@
             "txId": "1",
             "tx": {
                 "from": "``account_1_____________________s1",
-                "to": "``busd__________________________s1",
+                "to": "sc:erc20",
                 "value": "0",
                 "function": "allowance",
                 "arguments": [
@@ -56,7 +56,7 @@
             "txId": "2",
             "tx": {
                 "from": "0x82a978b3f5962a5b0957d9ee9eef472ee55b42f1000000000000000000000000",
-                "to": "``busd__________________________s1",
+                "to": "sc:erc20",
                 "value": "0",
                 "function": "approve",
                 "arguments": [
@@ -71,9 +71,10 @@
                 "status": "",
                 "logs": [
                     {
-                        "address": "``busd__________________________s1",
-                        "identifier": "str:approve",
+                        "address": "sc:erc20",
+                        "endpoint": "str:approve",
                         "topics": [
+                            "str:approve",
                             "0x82a978b3f5962a5b0957d9ee9eef472ee55b42f1000000000000000000000000",
                             "``account_1_____________________s1"
                         ],
@@ -89,7 +90,7 @@
             "txId": "3",
             "tx": {
                 "from": "``account_1_____________________s1",
-                "to": "``busd__________________________s1",
+                "to": "sc:erc20",
                 "value": "0",
                 "function": "allowance",
                 "arguments": [
@@ -124,7 +125,7 @@
                     "storage": {},
                     "code": ""
                 },
-                "``busd__________________________s1": {
+                "sc:erc20": {
                     "nonce": "0",
                     "balance": "0",
                     "storage": {

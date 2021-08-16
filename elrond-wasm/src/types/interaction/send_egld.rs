@@ -1,36 +1,45 @@
 use crate::abi::{OutputAbi, TypeAbi, TypeDescriptionContainer};
-use crate::api::{BigUintApi, EndpointFinishApi, ErrorApi, SendApi};
+use crate::api::SendApi;
 use crate::io::EndpointResult;
 use crate::types::{Address, BoxedBytes};
 use alloc::string::String;
 use alloc::vec::Vec;
 
-pub struct SendEgld<BigUint: BigUintApi> {
-	pub to: Address,
-	pub amount: BigUint,
-	pub data: BoxedBytes,
-}
-
-impl<FA, BigUint> EndpointResult<FA> for SendEgld<BigUint>
+pub struct SendEgld<SA>
 where
-	BigUint: BigUintApi + 'static,
-	FA: EndpointFinishApi + SendApi<BigUint> + ErrorApi + Clone + 'static,
+    SA: SendApi + 'static,
 {
-	#[inline]
-	fn finish(&self, api: FA) {
-		api.direct_egld(&self.to, &self.amount, self.data.as_slice());
-	}
+    pub api: SA,
+    pub to: Address,
+    pub amount: SA::AmountType,
+    pub data: BoxedBytes,
 }
 
-impl<BigUint: BigUintApi> TypeAbi for SendEgld<BigUint> {
-	fn type_name() -> String {
-		"SendEgld".into()
-	}
+impl<SA> EndpointResult for SendEgld<SA>
+where
+    SA: SendApi + 'static,
+{
+    type DecodeAs = ();
 
-	/// No ABI output.
-	fn output_abis(_: &[&'static str]) -> Vec<OutputAbi> {
-		Vec::new()
-	}
+    #[inline]
+    fn finish<FA>(&self, _api: FA) {
+        self.api
+            .direct_egld(&self.to, &self.amount, self.data.as_slice());
+    }
+}
 
-	fn provide_type_descriptions<TDC: TypeDescriptionContainer>(_: &mut TDC) {}
+impl<SA> TypeAbi for SendEgld<SA>
+where
+    SA: SendApi + 'static,
+{
+    fn type_name() -> String {
+        "SendEgld".into()
+    }
+
+    /// No ABI output.
+    fn output_abis(_: &[&'static str]) -> Vec<OutputAbi> {
+        Vec::new()
+    }
+
+    fn provide_type_descriptions<TDC: TypeDescriptionContainer>(_: &mut TDC) {}
 }
