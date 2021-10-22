@@ -1,5 +1,4 @@
-use super::attr_names::*;
-use super::util::*;
+use super::{attr_names::*, util::*};
 
 pub fn is_payment_amount(attr: &syn::Attribute) -> bool {
     is_attribute_with_no_args(attr, ATTR_PAYMENT_AMOUNT)
@@ -12,6 +11,10 @@ pub fn is_payment_token(attr: &syn::Attribute) -> bool {
 
 pub fn is_payment_nonce(attr: &syn::Attribute) -> bool {
     is_attribute_with_no_args(attr, ATTR_PAYMENT_NONCE)
+}
+
+pub fn is_payment_multi(attr: &syn::Attribute) -> bool {
+    is_attribute_with_no_args(attr, ATTR_PAYMENT_MULTI)
 }
 
 pub fn is_var_args(attr: &syn::Attribute) -> bool {

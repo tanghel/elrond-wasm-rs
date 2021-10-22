@@ -7,16 +7,14 @@
             "accounts": {
                 "address:crypto_bubbles_owner": {
                     "nonce": "0",
-                    "balance": "0x10000000",
-                    "storage": {},
-                    "code": ""
+                    "balance": "0x10000000"
                 },
                 "sc:crypto_bubbles": {
                     "nonce": "0",
                     "balance": "0x100",
                     "storage": {
-                        "''playerBalance|address:acc1": "0x100",
-                        "''playerBalance|address:acc2": "0x100"
+                        "str:playerBalance|address:acc1": "0x100",
+                        "str:playerBalance|address:acc2": "0x100"
                     },
                     "code": "file:../output/crypto-bubbles.wasm",
                     "owner": "address:crypto_bubbles_owner"
@@ -29,7 +27,6 @@
             "tx": {
                 "from": "address:crypto_bubbles_owner",
                 "to": "sc:crypto_bubbles",
-                "value": "0",
                 "function": "rewardWinner",
                 "arguments": [
                     "0x12",
@@ -71,8 +68,8 @@
                     "nonce": "0",
                     "balance": "0x100",
                     "storage": {
-                        "''playerBalance|address:acc1": "0x300",
-                        "''playerBalance|address:acc2": "0x100"
+                        "str:playerBalance|address:acc1": "0x300",
+                        "str:playerBalance|address:acc2": "0x100"
                     },
                     "code": "file:../output/crypto-bubbles.wasm"
                 }

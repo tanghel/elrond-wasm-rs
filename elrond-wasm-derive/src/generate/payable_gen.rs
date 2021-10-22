@@ -2,15 +2,21 @@ use super::util::*;
 use crate::model::{Method, MethodArgument, MethodPayableMetadata};
 
 pub fn generate_payable_snippet(m: &Method) -> proc_macro2::TokenStream {
-    payable_snippet_for_metadata(
+    let payment_single = payable_single_snippet_for_metadata(
         m.payable_metadata(),
         &m.payment_token_arg(),
         &m.payment_amount_arg(),
         &m.payment_nonce_arg(),
-    )
+    );
+    let payment_multi = multi_getter_init(&m.payment_multi_arg());
+
+    quote! {
+        #payment_single
+        #payment_multi
+    }
 }
 
-fn payable_snippet_for_metadata(
+fn payable_single_snippet_for_metadata(
     mpm: MethodPayableMetadata,
     payment_token_arg: &Option<MethodArgument>,
     payment_amount_arg: &Option<MethodArgument>,
@@ -22,7 +28,7 @@ fn payable_snippet_for_metadata(
             let token_init = egld_token_init(payment_token_arg);
             let nonce_init = zero_nonce_init(payment_nonce_arg);
             quote! {
-                self.call_value().check_not_payable();
+                elrond_wasm::api::CallValueApi::check_not_payable(&self.raw_vm_api());
                 #amount_init
                 #token_init
                 #nonce_init
@@ -33,25 +39,26 @@ fn payable_snippet_for_metadata(
             let token_init = egld_token_init(payment_token_arg);
             let nonce_init = zero_nonce_init(payment_nonce_arg);
             quote! {
-                let #payment_var_name = self.call_value().require_egld();
+                let #payment_var_name = elrond_wasm::api::CallValueApi::require_egld(&self.raw_vm_api());
                 #token_init
                 #nonce_init
             }
         },
-        MethodPayableMetadata::SingleEsdtToken(token_name) => {
-            let token_literal = byte_str_slice_literal(token_name.as_bytes());
+        MethodPayableMetadata::SingleEsdtToken(token_identifier) => {
+            let token_literal = byte_str_slice_literal(token_identifier.as_bytes());
             let payment_var_name = var_name_or_underscore(payment_amount_arg);
             let token_init = if let Some(arg) = payment_token_arg {
                 let pat = &arg.pat;
                 quote! {
-                    let #pat = TokenIdentifier::from(#token_literal);
+                    let #pat = TokenIdentifier::from_esdt_bytes(self.raw_vm_api(), #token_literal);
                 }
             } else {
                 quote! {}
             };
             let nonce_init = nonce_getter_init(payment_nonce_arg);
+
             quote! {
-                let #payment_var_name = self.call_value().require_esdt(#token_literal);
+                let #payment_var_name = elrond_wasm::api::CallValueApi::require_esdt(&self.raw_vm_api(), #token_literal);
                 #token_init
                 #nonce_init
             }
@@ -63,8 +70,9 @@ fn payable_snippet_for_metadata(
             } else {
                 let payment_var_name = var_name_or_underscore(payment_amount_arg);
                 let token_var_name = var_name_or_underscore(payment_token_arg);
+
                 quote! {
-                    let (#payment_var_name, #token_var_name) = self.call_value().payment_token_pair();
+                    let (#payment_var_name, #token_var_name) = elrond_wasm::api::CallValueApi::payment_token_pair(&self.raw_vm_api());
                     #nonce_init
                 }
             }
@@ -87,7 +95,7 @@ fn egld_token_init(opt_arg: &Option<MethodArgument>) -> proc_macro2::TokenStream
     if let Some(arg) = opt_arg {
         let pat = &arg.pat;
         quote! {
-            let #pat = TokenIdentifier::egld();
+            let #pat = TokenIdentifier::egld(self.raw_vm_api());
         }
     } else {
         quote! {}
@@ -110,6 +118,17 @@ fn nonce_getter_init(opt_arg: &Option<MethodArgument>) -> proc_macro2::TokenStre
         let pat = &arg.pat;
         quote! {
             let #pat = self.call_value().esdt_token_nonce();
+        }
+    } else {
+        quote! {}
+    }
+}
+
+fn multi_getter_init(opt_arg: &Option<MethodArgument>) -> proc_macro2::TokenStream {
+    if let Some(arg) = opt_arg {
+        let pat = &arg.pat;
+        quote! {
+            let #pat = self.call_value().all_esdt_transfers();
         }
     } else {
         quote! {}

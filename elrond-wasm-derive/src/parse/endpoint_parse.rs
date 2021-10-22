@@ -1,4 +1,7 @@
-use crate::model::{CallbackMetadata, EndpointMetadata, InitMetadata, Method, PublicRole};
+use crate::model::{
+    CallbackMetadata, EndpointMetadata, EndpointMutabilityMetadata, InitMetadata, Method,
+    PublicRole,
+};
 
 use super::{
     attributes::{
@@ -9,11 +12,9 @@ use super::{
 };
 
 fn check_single_role(method: &Method) {
-    if !matches!(method.public_role, PublicRole::Private) {
-        panic!(
-			"Can only annotate with one of the following arguments: `#[init]`, `#[endpoint]`, `#[view]`, `#[callback]`, `#[callback_raw]`."
-		);
-    }
+    assert!(matches!(method.public_role, PublicRole::Private),
+		"Can only annotate with one of the following arguments: `#[init]`, `#[endpoint]`, `#[view]`, `#[callback]`, `#[callback_raw]`."
+	);
 }
 
 pub fn process_init_attribute(
@@ -59,6 +60,7 @@ pub fn process_endpoint_attribute(
                 public_name: endpoint_ident,
                 payable: pass_1_data.payable.clone(),
                 only_owner: pass_1_data.only_owner,
+                mutability: EndpointMutabilityMetadata::Mutable,
             });
         })
         .is_some()
@@ -80,6 +82,7 @@ pub fn process_view_attribute(
                 public_name: view_ident,
                 payable: pass_1_data.payable.clone(),
                 only_owner: pass_1_data.only_owner,
+                mutability: EndpointMutabilityMetadata::Readonly,
             });
         })
         .is_some()

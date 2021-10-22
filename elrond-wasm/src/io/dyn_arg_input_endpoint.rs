@@ -1,10 +1,11 @@
-use crate::api::{EndpointArgumentApi, ErrorApi};
-use crate::err_msg;
-use crate::{ArgDecodeInput, DynArgInput};
+use crate::{
+    api::{EndpointArgumentApi, ManagedTypeApi},
+    err_msg, ArgDecodeInput, DynArgInput,
+};
 
 pub struct EndpointDynArgLoader<AA>
 where
-    AA: EndpointArgumentApi + 'static,
+    AA: ManagedTypeApi + EndpointArgumentApi,
 {
     api: AA,
     current_index: i32,
@@ -13,7 +14,7 @@ where
 
 impl<AA> EndpointDynArgLoader<AA>
 where
-    AA: EndpointArgumentApi + 'static,
+    AA: ManagedTypeApi + EndpointArgumentApi,
 {
     pub fn new(api: AA) -> Self {
         let num_arguments = api.get_num_arguments();
@@ -25,27 +26,27 @@ where
     }
 }
 
-impl<AA> ErrorApi for EndpointDynArgLoader<AA>
+impl<AA> DynArgInput for EndpointDynArgLoader<AA>
 where
-    AA: EndpointArgumentApi + ErrorApi + 'static,
+    AA: ManagedTypeApi + EndpointArgumentApi,
 {
-    #[inline]
-    fn signal_error(&self, message: &[u8]) -> ! {
-        self.api.signal_error(message)
-    }
-}
+    type ItemInput = ArgDecodeInput<AA>;
 
-impl<AA> DynArgInput<ArgDecodeInput<AA>> for EndpointDynArgLoader<AA>
-where
-    AA: EndpointArgumentApi + Clone + 'static,
-{
+    type ErrorApi = AA;
+
+    #[inline]
+    fn dyn_arg_vm_api(&self) -> Self::ErrorApi {
+        self.api.clone()
+    }
+
     fn has_next(&self) -> bool {
         self.current_index < self.num_arguments
     }
 
     fn next_arg_input(&mut self) -> ArgDecodeInput<AA> {
         if self.current_index >= self.num_arguments {
-            self.signal_error(err_msg::ARG_WRONG_NUMBER)
+            self.dyn_arg_vm_api()
+                .signal_error(err_msg::ARG_WRONG_NUMBER)
         } else {
             let arg_input = ArgDecodeInput::new(self.api.clone(), self.current_index);
             self.current_index += 1;

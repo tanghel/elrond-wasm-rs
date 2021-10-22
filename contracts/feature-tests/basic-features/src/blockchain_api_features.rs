@@ -4,23 +4,33 @@ elrond_wasm::imports!();
 #[elrond_wasm::module]
 pub trait BlockchainApiFeatures {
     #[endpoint]
-    fn get_caller(&self) -> Address {
+    fn get_caller(&self) -> ManagedAddress {
         self.blockchain().get_caller()
     }
 
     #[endpoint]
-    fn get_shard_of_address(&self, address: &Address) -> u32 {
+    fn get_owner_address(&self) -> ManagedAddress {
+        self.blockchain().get_owner_address()
+    }
+
+    #[endpoint]
+    fn get_shard_of_address(&self, address: &ManagedAddress) -> u32 {
         self.blockchain().get_shard_of_address(address)
     }
 
     #[endpoint]
-    fn is_smart_contract(&self, address: &Address) -> bool {
+    fn is_smart_contract(&self, address: &ManagedAddress) -> bool {
         self.blockchain().is_smart_contract(address)
     }
 
     #[endpoint]
-    fn get_owner_address(&self) -> Address {
-        self.blockchain().get_owner_address()
+    fn get_state_root_hash_legacy(&self) -> ManagedByteArray<Self::Api, 32> {
+        self.blockchain().get_state_root_hash()
+    }
+
+    #[endpoint]
+    fn get_tx_hash_legacy(&self) -> ManagedByteArray<Self::Api, 32> {
+        self.blockchain().get_tx_hash()
     }
 
     #[endpoint]
@@ -29,7 +39,7 @@ pub trait BlockchainApiFeatures {
     }
 
     #[endpoint]
-    fn get_cumulated_validator_rewards(&self) -> Self::BigUint {
+    fn get_cumulated_validator_rewards(&self) -> BigUint {
         self.blockchain().get_cumulated_validator_rewards()
     }
 

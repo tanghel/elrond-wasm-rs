@@ -12,16 +12,17 @@
             "tx": {
                 "from": "address:acc3",
                 "to": "sc:kitty_ownership_contract",
-                "value": "0",
                 "function": "totalSupply",
                 "arguments": [],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["2"],
-                "message": "",
+                "out": [
+                    "2"
+                ],
                 "status": "0",
+                "message": "",
                 "gas": "*",
                 "refund": "*"
             }
@@ -32,16 +33,19 @@
             "tx": {
                 "from": "address:acc3",
                 "to": "sc:kitty_ownership_contract",
-                "value": "0",
                 "function": "balanceOf",
-                "arguments": ["address:acc1"],
+                "arguments": [
+                    "address:acc1"
+                ],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["1"],
-                "message": "",
+                "out": [
+                    "1"
+                ],
                 "status": "0",
+                "message": "",
                 "gas": "*",
                 "refund": "*"
             }
@@ -52,16 +56,19 @@
             "tx": {
                 "from": "address:acc3",
                 "to": "sc:kitty_ownership_contract",
-                "value": "0",
                 "function": "ownerOf",
-                "arguments": ["2"],
+                "arguments": [
+                    "2"
+                ],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["address:acc2"],
-                "message": "",
+                "out": [
+                    "address:acc2"
+                ],
                 "status": "0",
+                "message": "",
                 "gas": "*",
                 "refund": "*"
             }
@@ -72,16 +79,19 @@
             "tx": {
                 "from": "address:acc3",
                 "to": "sc:kitty_ownership_contract",
-                "value": "0",
                 "function": "tokensOfOwner",
-                "arguments": ["address:acc1"],
+                "arguments": [
+                    "address:acc1"
+                ],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["u32:1"],
-                "message": "",
+                "out": [
+                    "u32:1"
+                ],
                 "status": "0",
+                "message": "",
                 "gas": "*",
                 "refund": "*"
             }
@@ -92,16 +102,19 @@
             "tx": {
                 "from": "address:acc3",
                 "to": "sc:kitty_ownership_contract",
-                "value": "0",
                 "function": "getKittyById",
-                "arguments": ["1"],
+                "arguments": [
+                    "1"
+                ],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["u8:0|u8:0|u8:0|u8:0|u8:0|u8:0|u8:0|u64:0|u64:0|u32:0|u32:0|u32:0|u16:0|u16:0"],
-                "message": "",
+                "out": [
+                    "u8:0|u8:0|u8:0|u8:0|u8:0|u8:0|u8:0|u64:0|u64:0|u32:0|u32:0|u32:0|u16:0|u16:0"
+                ],
                 "status": "0",
+                "message": "",
                 "gas": "*",
                 "refund": "*"
             }
@@ -112,16 +125,19 @@
             "tx": {
                 "from": "address:acc3",
                 "to": "sc:kitty_ownership_contract",
-                "value": "0",
                 "function": "isReadyToBreed",
-                "arguments": ["1"],
+                "arguments": [
+                    "1"
+                ],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["0x1"],
-                "message": "",
+                "out": [
+                    "0x1"
+                ],
                 "status": "0",
+                "message": "",
                 "gas": "*",
                 "refund": "*"
             }
@@ -132,16 +148,19 @@
             "tx": {
                 "from": "address:acc3",
                 "to": "sc:kitty_ownership_contract",
-                "value": "0",
                 "function": "isPregnant",
-                "arguments": ["1"],
+                "arguments": [
+                    "1"
+                ],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["0x"],
-                "message": "",
+                "out": [
+                    "0x"
+                ],
                 "status": "0",
+                "message": "",
                 "gas": "*",
                 "refund": "*"
             }
@@ -152,16 +171,20 @@
             "tx": {
                 "from": "address:acc3",
                 "to": "sc:kitty_ownership_contract",
-                "value": "0",
                 "function": "canBreedWith",
-                "arguments": ["1", "2"],
+                "arguments": [
+                    "1",
+                    "2"
+                ],
                 "gasLimit": "100,000,000",
                 "gasPrice": "0"
             },
             "expect": {
-                "out": ["0x"],
-                "message": "",
+                "out": [
+                    "0x"
+                ],
                 "status": "0",
+                "message": "",
                 "gas": "*",
                 "refund": "*"
             }

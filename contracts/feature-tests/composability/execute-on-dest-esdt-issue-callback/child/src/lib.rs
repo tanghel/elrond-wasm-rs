@@ -13,12 +13,13 @@ pub trait Child {
     #[endpoint(issueWrappedEgld)]
     fn issue_wrapped_egld(
         &self,
-        token_display_name: BoxedBytes,
-        token_ticker: BoxedBytes,
-        initial_supply: Self::BigUint,
-        #[payment] issue_cost: Self::BigUint,
-    ) -> AsyncCall<Self::SendApi> {
-        ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
+        token_display_name: ManagedBuffer,
+        token_ticker: ManagedBuffer,
+        initial_supply: BigUint,
+        #[payment] issue_cost: BigUint,
+    ) -> AsyncCall {
+        self.send()
+            .esdt_system_sc_proxy()
             .issue_fungible(
                 issue_cost,
                 &token_display_name,
@@ -46,8 +47,8 @@ pub trait Child {
     fn esdt_issue_callback(
         &self,
         #[payment_token] token_identifier: TokenIdentifier,
-        #[payment] _amount: Self::BigUint,
-        #[call_result] _result: AsyncCallResult<()>,
+        #[payment] _amount: BigUint,
+        #[call_result] _result: ManagedAsyncCallResult<()>,
     ) {
         self.wrapped_egld_token_identifier().set(&token_identifier);
     }
@@ -56,5 +57,5 @@ pub trait Child {
 
     #[view(getWrappedEgldTokenIdentifier)]
     #[storage_mapper("wrappedEgldTokenIdentifier")]
-    fn wrapped_egld_token_identifier(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
+    fn wrapped_egld_token_identifier(&self) -> SingleValueMapper<TokenIdentifier>;
 }

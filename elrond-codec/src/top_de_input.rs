@@ -1,11 +1,14 @@
-use crate::num_conv::bytes_to_number;
-use crate::transmute::vec_into_boxed_slice;
-use alloc::boxed::Box;
-use alloc::vec::Vec;
+use crate::{
+    num_conv::bytes_to_number, transmute::vec_into_boxed_slice, DecodeError, NestedDecodeInput,
+    OwnedBytesNestedDecodeInput, TryStaticCast,
+};
+use alloc::{boxed::Box, vec::Vec};
 
 /// Trait that abstracts away an underlying API for a top-level object deserializer.
 /// The underlying API can provide pre-parsed i64/u64 or pre-bundled boxed slices.
 pub trait TopDecodeInput: Sized {
+    type NestedBuffer: NestedDecodeInput;
+
     /// Length of the underlying data, in bytes.
     fn byte_len(&self) -> usize;
 
@@ -29,41 +32,37 @@ pub trait TopDecodeInput: Sized {
         bytes_to_number(&*self.into_boxed_slice_u8(), true) as i64
     }
 
-    /// Unless you're developing elrond-wasm, please ignore.
-    ///
-    /// Shortcut for sending a BigInt managed by the API to the API directly via its handle.
-    ///
-    /// - ArwenBigInt + finish API
-    /// - ArwenBigInt + set storage
-    /// Not used for:
-    /// - RustBigInt
-    /// - async call
-    #[doc(hidden)]
     #[inline]
-    fn try_get_big_int_handle(&self) -> (bool, i32) {
-        (false, -1)
+    fn into_specialized<T, F>(self, else_deser: F) -> Result<T, DecodeError>
+    where
+        T: TryStaticCast,
+        F: FnOnce(Self) -> Result<T, DecodeError>,
+    {
+        else_deser(self)
     }
 
-    /// Unless you're developing elrond-wasm, please ignore.
-    ///
-    /// Shortcut for sending a BigUint managed by the API to the API directly via its handle.
-    ///
-    /// Used for:
-    /// - ArwenBigUint + finish API
-    /// - ArwenBigUint + set storage
-    /// Not used for:
-    /// - RustBigUint
-    /// - async call
-    /// - anything else
-    ///
-    #[doc(hidden)]
+    /// Note: currently not in use.
     #[inline]
-    fn try_get_big_uint_handle(&self) -> (bool, i32) {
-        (false, -1)
+    fn into_specialized_or_exit<T, F, ExitCtx>(
+        self,
+        c: ExitCtx,
+        exit: fn(ExitCtx, DecodeError) -> !,
+        else_deser: F,
+    ) -> T
+    where
+        T: TryStaticCast,
+        ExitCtx: Clone,
+        F: FnOnce(Self, ExitCtx, fn(ExitCtx, DecodeError) -> !) -> T,
+    {
+        else_deser(self, c, exit)
     }
+
+    fn into_nested_buffer(self) -> Self::NestedBuffer;
 }
 
 impl TopDecodeInput for Box<[u8]> {
+    type NestedBuffer = OwnedBytesNestedDecodeInput;
+
     fn byte_len(&self) -> usize {
         self.len()
     }
@@ -71,9 +70,15 @@ impl TopDecodeInput for Box<[u8]> {
     fn into_boxed_slice_u8(self) -> Box<[u8]> {
         self
     }
+
+    fn into_nested_buffer(self) -> Self::NestedBuffer {
+        OwnedBytesNestedDecodeInput::new(self)
+    }
 }
 
 impl TopDecodeInput for Vec<u8> {
+    type NestedBuffer = OwnedBytesNestedDecodeInput;
+
     fn byte_len(&self) -> usize {
         self.len()
     }
@@ -81,14 +86,24 @@ impl TopDecodeInput for Vec<u8> {
     fn into_boxed_slice_u8(self) -> Box<[u8]> {
         vec_into_boxed_slice(self)
     }
+
+    fn into_nested_buffer(self) -> Self::NestedBuffer {
+        OwnedBytesNestedDecodeInput::new(self.into_boxed_slice())
+    }
 }
 
 impl<'a> TopDecodeInput for &'a [u8] {
+    type NestedBuffer = &'a [u8];
+
     fn byte_len(&self) -> usize {
         self.len()
     }
 
     fn into_boxed_slice_u8(self) -> Box<[u8]> {
         Box::from(self)
+    }
+
+    fn into_nested_buffer(self) -> Self::NestedBuffer {
+        self
     }
 }

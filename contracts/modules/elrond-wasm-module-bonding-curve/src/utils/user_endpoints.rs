@@ -1,9 +1,11 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use crate::curves::curve_function::CurveFunction;
-use crate::function_selector::FunctionSelector;
-use crate::utils::{events, storage, structs::CurveArguments};
+use crate::{
+    curves::curve_function::CurveFunction,
+    function_selector::FunctionSelector,
+    utils::{events, storage, structs::CurveArguments},
+};
 
 #[elrond_wasm::module]
 pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
@@ -11,7 +13,7 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
     #[endpoint(sellToken)]
     fn sell_token(
         &self,
-        #[payment_amount] sell_amount: Self::BigUint,
+        #[payment_amount] sell_amount: BigUint,
         #[payment_nonce] nonce: u64,
         #[payment_token] offered_token: TokenIdentifier,
     ) -> SCResult<()> {
@@ -56,15 +58,15 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
     #[endpoint(buyToken)]
     fn buy_token(
         &self,
-        #[payment_amount] payment: Self::BigUint,
+        #[payment_amount] payment: BigUint,
         #[payment_token] offered_token: TokenIdentifier,
-        requested_amount: Self::BigUint,
+        requested_amount: BigUint,
         requested_token: TokenIdentifier,
         #[var_args] requested_nonce: OptionalArg<u64>,
     ) -> SCResult<()> {
         let payment_token =
             self.check_owned_return_payment_token(&requested_token, &requested_amount)?;
-        self.check_given_token(&payment_token, &offered_token)?;
+        self.check_given_token(&payment_token, &offered_token);
 
         let calculated_price = self
             .bonding_curve(&requested_token)
@@ -124,9 +126,9 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
 
     fn send_bought_tokens(
         &self,
-        caller: &Address,
+        caller: &ManagedAddress,
         token: TokenIdentifier,
-        amount: Self::BigUint,
+        amount: BigUint,
     ) -> SCResult<()> {
         let mut nonces = self.token_details(&token).get().token_nonces;
         let mut total_amount = amount;
@@ -134,7 +136,7 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
             let nonce = *nonces.first().ok_or("Requested nonce does not exist")?;
             let available_amount = self.nonce_amount(&token, nonce).get();
 
-            let amount_to_send: Self::BigUint;
+            let amount_to_send: BigUint;
             if available_amount <= total_amount {
                 amount_to_send = available_amount.clone();
                 total_amount -= amount_to_send.clone();
@@ -144,11 +146,11 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
                 self.nonce_amount(&token, nonce)
                     .update(|val| *val -= total_amount.clone());
                 amount_to_send = total_amount.clone();
-                total_amount = Self::BigUint::from(0u64);
+                total_amount = self.types().big_uint_zero();
             }
             self.send()
                 .direct(caller, &token, nonce, &amount_to_send, b"buying");
-            if total_amount == 0u64 {
+            if total_amount == 0 {
                 break;
             }
         }
@@ -158,11 +160,7 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
     }
 
     #[view]
-    fn get_buy_price(
-        &self,
-        amount: Self::BigUint,
-        identifier: TokenIdentifier,
-    ) -> SCResult<Self::BigUint> {
+    fn get_buy_price(&self, amount: BigUint, identifier: TokenIdentifier) -> SCResult<BigUint> {
         self.check_token_exists(&identifier)?;
 
         let bonding_curve = self.bonding_curve(&identifier).get();
@@ -170,11 +168,7 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
     }
 
     #[view]
-    fn get_sell_price(
-        &self,
-        amount: Self::BigUint,
-        identifier: TokenIdentifier,
-    ) -> SCResult<Self::BigUint> {
+    fn get_sell_price(&self, amount: BigUint, identifier: TokenIdentifier) -> SCResult<BigUint> {
         self.check_token_exists(&identifier)?;
 
         let bonding_curve = self.bonding_curve(&identifier).get();
@@ -194,7 +188,7 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
     fn get_token_availability(
         &self,
         identifier: TokenIdentifier,
-    ) -> MultiResultVec<MultiResult2<u64, Self::BigUint>> {
+    ) -> MultiResultVec<MultiResult2<u64, BigUint>> {
         let token_nonces = self.token_details(&identifier).get().token_nonces;
         let mut availability = Vec::new();
 
@@ -210,54 +204,49 @@ pub trait UserEndpointsModule: storage::StorageModule + events::EventsModule {
     fn check_owned_return_payment_token(
         &self,
         issued_token: &TokenIdentifier,
-        amount: &Self::BigUint,
+        amount: &BigUint,
     ) -> SCResult<TokenIdentifier> {
         self.check_token_exists(issued_token)?;
 
         let bonding_curve = self.bonding_curve(issued_token).get();
 
         require!(
-            bonding_curve.curve != FunctionSelector::None,
+            bonding_curve.curve.is_none(),
             "The token price was not set yet!"
         );
         require!(
-            amount > &Self::BigUint::zero(),
+            amount > &self.types().big_uint_zero(),
             "Must pay more than 0 tokens!"
         );
         Ok(bonding_curve.payment_token)
     }
 
-    fn check_given_token(
-        &self,
-        accepted_token: &TokenIdentifier,
-        given_token: &TokenIdentifier,
-    ) -> SCResult<()> {
+    fn check_given_token(&self, accepted_token: &TokenIdentifier, given_token: &TokenIdentifier) {
         if given_token != accepted_token {
-            return Err(SCError::from(BoxedBytes::from_concat(&[
-                b"Only ",
-                accepted_token.as_esdt_identifier(),
-                b" tokens accepted",
-            ])));
+            let mut err = self.error().new_error();
+            err.append_bytes(&b"Only"[..]);
+            err.append_bytes(accepted_token.to_esdt_identifier().as_slice());
+            err.append_bytes(&b" tokens accepted"[..]);
+            err.exit_now()
         }
-        Ok(())
     }
 
     fn compute_buy_price(
         &self,
-        function_selector: &FunctionSelector<Self::BigUint>,
-        amount: Self::BigUint,
-        arguments: CurveArguments<Self::BigUint>,
-    ) -> SCResult<Self::BigUint> {
+        function_selector: &FunctionSelector<Self::Api>,
+        amount: BigUint,
+        arguments: CurveArguments<Self::Api>,
+    ) -> SCResult<BigUint> {
         let token_start = arguments.first_token_available();
         function_selector.calculate_price(&token_start, &amount, &arguments)
     }
 
     fn compute_sell_price(
         &self,
-        function_selector: &FunctionSelector<Self::BigUint>,
-        amount: Self::BigUint,
-        arguments: CurveArguments<Self::BigUint>,
-    ) -> SCResult<Self::BigUint> {
+        function_selector: &FunctionSelector<Self::Api>,
+        amount: BigUint,
+        arguments: CurveArguments<Self::Api>,
+    ) -> SCResult<BigUint> {
         let token_start = &arguments.first_token_available() - &amount;
         function_selector.calculate_price(&token_start, &amount, &arguments)
     }

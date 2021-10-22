@@ -7,23 +7,19 @@
             "accounts": {
                 "address:erc20_owner": {
                     "nonce": "0",
-                    "balance": "1,000,000",
-                    "storage": {}
+                    "balance": "1,000,000"
                 },
                 "address:my_address": {
                     "nonce": "0",
-                    "balance": "1,000,000",
-                    "storage": {}
+                    "balance": "1,000,000"
                 },
                 "address:acc1": {
                     "nonce": "0",
-                    "balance": "1,000,000",
-                    "storage": {}
+                    "balance": "1,000,000"
                 },
                 "address:acc2": {
                     "nonce": "0",
-                    "balance": "1,000,000",
-                    "storage": {}
+                    "balance": "1,000,000"
                 }
             },
             "newAddresses": [
@@ -45,7 +41,6 @@
             "tx": {
                 "from": "address:erc20_owner",
                 "contractCode": "file:../../erc20/output/erc20.wasm",
-                "value": "0",
                 "arguments": [
                     "1,000,000,000"
                 ],
@@ -53,6 +48,7 @@
                 "gasPrice": "0"
             },
             "expect": {
+                "out": [],
                 "status": "0",
                 "gas": "*",
                 "refund": "*"
@@ -85,8 +81,8 @@
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
-                        "''balance|address:erc20_owner": "1,000,000,000",
-                        "''total_supply": "1,000,000,000"
+                        "str:balance|address:erc20_owner": "1,000,000,000",
+                        "str:totalSupply": "1,000,000,000"
                     },
                     "code": "file:../../erc20/output/erc20.wasm"
                 }
@@ -98,7 +94,6 @@
             "tx": {
                 "from": "address:my_address",
                 "contractCode": "file:../output/lottery-erc20.wasm",
-                "value": "0",
                 "arguments": [
                     "sc:erc20"
                 ],
@@ -106,6 +101,7 @@
                 "gasPrice": "0"
             },
             "expect": {
+                "out": [],
                 "status": "0",
                 "gas": "*",
                 "refund": "*"
@@ -138,8 +134,8 @@
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
-                        "''balance|address:erc20_owner": "1,000,000,000",
-                        "''total_supply": "1,000,000,000"
+                        "str:balance|address:erc20_owner": "1,000,000,000",
+                        "str:totalSupply": "1,000,000,000"
                     },
                     "code": "file:../../erc20/output/erc20.wasm"
                 },
@@ -147,7 +143,7 @@
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
-                        "''erc20_contract_address": "sc:erc20"
+                        "str:erc20ContractAddress": "sc:erc20"
                     },
                     "code": "file:../output/lottery-erc20.wasm"
                 }

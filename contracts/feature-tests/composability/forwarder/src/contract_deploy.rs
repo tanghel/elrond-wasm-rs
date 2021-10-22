@@ -3,52 +3,54 @@ elrond_wasm::imports!();
 #[elrond_wasm::module]
 pub trait DeployContractModule {
     #[proxy]
-    fn vault_proxy(&self) -> vault::Proxy<Self::SendApi>;
+    fn vault_proxy(&self) -> vault::Proxy<Self::Api>;
 
     #[endpoint]
-    fn deploy_contract(&self, code: BoxedBytes) -> SCResult<Address> {
-        let deployed_contract_address = self.deploy_vault(&code).ok_or("Deploy failed")?;
-
-        Ok(deployed_contract_address)
+    fn deploy_contract(
+        &self,
+        code: ManagedBuffer,
+        #[var_args] opt_arg: OptionalArg<ManagedBuffer>,
+    ) -> MultiResult2<ManagedAddress, ManagedVec<Self::Api, ManagedBuffer>> {
+        self.deploy_vault(&code, opt_arg)
     }
 
-    #[endpoint(deployFromSource)]
-    fn deploy_from_source(
+    #[endpoint]
+    fn deploy_two_contracts(
         &self,
-        source_contract_address: Address,
-        #[var_args] arguments: VarArgs<BoxedBytes>,
-    ) -> SCResult<Address> {
-        self.send()
-            .deploy_from_source_contract(
-                self.blockchain().get_gas_left(),
-                &Self::BigUint::zero(),
-                &source_contract_address,
-                CodeMetadata::DEFAULT,
-                &arguments.as_slice().into(),
-            )
-            .ok_or("Deploy from source contract failed")
+        code: ManagedBuffer,
+    ) -> MultiResult2<ManagedAddress, ManagedAddress> {
+        let (first_deployed_contract_address, _) =
+            self.deploy_vault(&code, OptionalArg::None).into_tuple();
+        let (second_deployed_contract_address, _) =
+            self.deploy_vault(&code, OptionalArg::None).into_tuple();
+
+        (
+            first_deployed_contract_address,
+            second_deployed_contract_address,
+        )
+            .into()
+    }
+
+    fn deploy_vault(
+        &self,
+        code: &ManagedBuffer,
+        #[var_args] opt_arg: OptionalArg<ManagedBuffer>,
+    ) -> MultiResult2<ManagedAddress, ManagedVec<Self::Api, ManagedBuffer>> {
+        self.vault_proxy()
+            .init(opt_arg)
+            .deploy_contract(code, CodeMetadata::DEFAULT)
             .into()
     }
 
     #[endpoint]
-    fn deploy_two_contracts(&self, code: BoxedBytes) -> SCResult<MultiResult2<Address, Address>> {
-        let first_deployed_contract_address =
-            self.deploy_vault(&code).ok_or("First deploy failed")?;
-
-        let second_deployed_contract_address =
-            self.deploy_vault(&code).ok_or("Second deploy failed")?;
-
-        Ok((
-            first_deployed_contract_address,
-            second_deployed_contract_address,
-        )
-            .into())
-    }
-
-    #[endpoint]
-    fn deploy_vault(&self, code: &BoxedBytes) -> Option<Address> {
+    fn deploy_vault_from_source(
+        &self,
+        source_address: ManagedAddress,
+        #[var_args] opt_arg: OptionalArg<ManagedBuffer>,
+    ) -> MultiResult2<ManagedAddress, ManagedVec<Self::Api, ManagedBuffer>> {
         self.vault_proxy()
-            .init()
-            .deploy_contract(code, CodeMetadata::DEFAULT)
+            .init(opt_arg)
+            .deploy_from_source(&source_address, CodeMetadata::DEFAULT)
+            .into()
     }
 }

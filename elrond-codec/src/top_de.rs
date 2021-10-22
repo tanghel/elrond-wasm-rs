@@ -1,9 +1,8 @@
 use alloc::boxed::Box;
 
-use crate::codec_err::DecodeError;
-use crate::nested_de::*;
-use crate::top_de_input::TopDecodeInput;
-use crate::TypeInfo;
+use crate::{
+    codec_err::DecodeError, nested_de::*, top_de_input::TopDecodeInput, NestedDecodeInput, TypeInfo,
+};
 
 /// Trait that allows zero-copy read of values from an underlying API in big endian format.
 ///
@@ -28,6 +27,7 @@ pub trait TopDecode: Sized {
     /// Version of `top_decode` that exits quickly in case of error.
     /// Its purpose is to create smaller implementations
     /// in cases where the application is supposed to exit directly on decode error.
+    #[inline]
     fn top_decode_or_exit<I: TopDecodeInput, ExitCtx: Clone>(
         input: I,
         c: ExitCtx,
@@ -64,10 +64,9 @@ where
     I: TopDecodeInput,
     T: NestedDecode,
 {
-    let bytes = input.into_boxed_slice_u8();
-    let mut_slice = &mut &*bytes;
-    let result = T::dep_decode(mut_slice)?;
-    if !mut_slice.is_empty() {
+    let mut nested_buffer = input.into_nested_buffer();
+    let result = T::dep_decode(&mut nested_buffer)?;
+    if !nested_buffer.is_depleted() {
         return Err(DecodeError::INPUT_TOO_LONG);
     }
     Ok(result)
@@ -84,10 +83,9 @@ where
     I: TopDecodeInput,
     T: NestedDecode,
 {
-    let bytes = input.into_boxed_slice_u8();
-    let mut_slice = &mut &*bytes;
-    let result = T::dep_decode_or_exit(mut_slice, c.clone(), exit);
-    if !mut_slice.is_empty() {
+    let mut nested_buffer = input.into_nested_buffer();
+    let result = T::dep_decode_or_exit(&mut nested_buffer, c.clone(), exit);
+    if !nested_buffer.is_depleted() {
         exit(c, DecodeError::INPUT_TOO_LONG);
     }
     result

@@ -6,21 +6,21 @@ elrond_wasm::derive_imports!();
 const PERCENTAGE_TOTAL: u8 = 100;
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct Auction<BigUint: BigUintApi> {
-    pub token_identifier: TokenIdentifier,
-    pub min_bid: BigUint,
-    pub max_bid: BigUint,
+pub struct Auction<M: ManagedTypeApi> {
+    pub token_identifier: TokenIdentifier<M>,
+    pub min_bid: BigUint<M>,
+    pub max_bid: BigUint<M>,
     pub deadline: u64,
-    pub original_owner: Address,
-    pub current_bid: BigUint,
-    pub current_winner: Address,
+    pub original_owner: ManagedAddress<M>,
+    pub current_bid: BigUint<M>,
+    pub current_winner: ManagedAddress<M>,
 }
 
 #[derive(TopEncode, TopDecode, TypeAbi)]
-pub struct AuctionArgument<BigUint: BigUintApi> {
-    pub token_identifier: TokenIdentifier,
-    pub min_bid: BigUint,
-    pub max_bid: BigUint,
+pub struct AuctionArgument<M: ManagedTypeApi> {
+    pub token_identifier: TokenIdentifier<M>,
+    pub min_bid: BigUint<M>,
+    pub max_bid: BigUint<M>,
     pub deadline: u64,
 }
 
@@ -28,7 +28,7 @@ pub struct AuctionArgument<BigUint: BigUintApi> {
 pub trait Erc1155Marketplace {
     /// `bid_cut_percentage` is the cut that the contract takes from any sucessful bid
     #[init]
-    fn init(&self, token_ownership_contract_address: Address, bid_cut_percentage: u8) {
+    fn init(&self, token_ownership_contract_address: ManagedAddress, bid_cut_percentage: u8) {
         self.token_ownership_contract_address()
             .set(&token_ownership_contract_address);
         self.percentage_cut().set(&bid_cut_percentage);
@@ -40,11 +40,11 @@ pub trait Erc1155Marketplace {
     #[endpoint(onERC1155Received)]
     fn on_erc1155_received(
         &self,
-        _operator: Address,
-        from: Address,
-        type_id: Self::BigUint,
-        nft_id: Self::BigUint,
-        args: AuctionArgument<Self::BigUint>,
+        _operator: ManagedAddress,
+        from: ManagedAddress,
+        type_id: BigUint,
+        nft_id: BigUint,
+        args: AuctionArgument<Self::Api>,
     ) -> SCResult<()> {
         require!(
             self.blockchain().get_caller() == self.token_ownership_contract_address().get(),
@@ -69,11 +69,11 @@ pub trait Erc1155Marketplace {
     #[endpoint(onERC1155BatchReceived)]
     fn on_erc1155_batch_received(
         &self,
-        _operator: Address,
-        from: Address,
-        type_ids: Vec<Self::BigUint>,
-        nft_ids: Vec<Self::BigUint>,
-        args: AuctionArgument<Self::BigUint>,
+        _operator: ManagedAddress,
+        from: ManagedAddress,
+        type_ids: Vec<BigUint>,
+        nft_ids: Vec<BigUint>,
+        args: AuctionArgument<Self::Api>,
     ) -> SCResult<()> {
         require!(
             self.blockchain().get_caller() == self.token_ownership_contract_address().get(),
@@ -135,7 +135,10 @@ pub trait Erc1155Marketplace {
 
     #[only_owner]
     #[endpoint(setTokenOwnershipContractAddress)]
-    fn set_token_ownership_contract_address_endpoint(&self, new_address: Address) -> SCResult<()> {
+    fn set_token_ownership_contract_address_endpoint(
+        &self,
+        new_address: ManagedAddress,
+    ) -> SCResult<()> {
         require!(!new_address.is_zero(), "Cannot set to zero address");
         require!(
             self.blockchain().is_smart_contract(&new_address),
@@ -153,10 +156,10 @@ pub trait Erc1155Marketplace {
     #[endpoint]
     fn bid(
         &self,
-        type_id: Self::BigUint,
-        nft_id: Self::BigUint,
+        type_id: BigUint,
+        nft_id: BigUint,
         #[payment_token] payment_token: TokenIdentifier,
-        #[payment] payment: Self::BigUint,
+        #[payment] payment: BigUint,
     ) -> SCResult<()> {
         require!(
             self.is_up_for_auction(&type_id, &nft_id),
@@ -193,7 +196,7 @@ pub trait Erc1155Marketplace {
         );
 
         // refund losing bid
-        if auction.current_winner != Address::zero() {
+        if !auction.current_winner.is_zero() {
             let data = self.data_or_empty_if_sc(&caller, b"bid refund");
             self.send().direct(
                 &auction.current_winner,
@@ -213,11 +216,7 @@ pub trait Erc1155Marketplace {
     }
 
     #[endpoint(endAuction)]
-    fn end_auction(
-        &self,
-        type_id: Self::BigUint,
-        nft_id: Self::BigUint,
-    ) -> SCResult<AsyncCall<Self::SendApi>> {
+    fn end_auction(&self, type_id: BigUint, nft_id: BigUint) -> SCResult<AsyncCall> {
         require!(
             self.is_up_for_auction(&type_id, &nft_id),
             "Token is not up for auction"
@@ -233,7 +232,7 @@ pub trait Erc1155Marketplace {
 
         self.auction_for_token(&type_id, &nft_id).clear();
 
-        if auction.current_winner != Address::zero() {
+        if !auction.current_winner.is_zero() {
             let percentage_cut = self.percentage_cut().get();
             let cut_amount = self.calculate_cut_amount(&auction.current_bid, percentage_cut);
             let amount_to_send = &auction.current_bid - &cut_amount;
@@ -261,16 +260,16 @@ pub trait Erc1155Marketplace {
     // views
 
     #[view(isUpForAuction)]
-    fn is_up_for_auction(&self, type_id: &Self::BigUint, nft_id: &Self::BigUint) -> bool {
+    fn is_up_for_auction(&self, type_id: &BigUint, nft_id: &BigUint) -> bool {
         !self.auction_for_token(type_id, nft_id).is_empty()
     }
 
     #[view(getAuctionStatus)]
     fn get_auction_status(
         &self,
-        type_id: Self::BigUint,
-        nft_id: Self::BigUint,
-    ) -> SCResult<Auction<Self::BigUint>> {
+        type_id: BigUint,
+        nft_id: BigUint,
+    ) -> SCResult<Auction<Self::Api>> {
         require!(
             self.is_up_for_auction(&type_id, &nft_id),
             "Token is not up for auction"
@@ -280,11 +279,7 @@ pub trait Erc1155Marketplace {
     }
 
     #[view(getCurrentWinningBid)]
-    fn get_current_winning_bid(
-        &self,
-        type_id: Self::BigUint,
-        nft_id: Self::BigUint,
-    ) -> SCResult<Self::BigUint> {
+    fn get_current_winning_bid(&self, type_id: BigUint, nft_id: BigUint) -> SCResult<BigUint> {
         require!(
             self.is_up_for_auction(&type_id, &nft_id),
             "Token is not up for auction"
@@ -294,11 +289,7 @@ pub trait Erc1155Marketplace {
     }
 
     #[view(getCurrentWinner)]
-    fn get_current_winner(
-        &self,
-        type_id: Self::BigUint,
-        nft_id: Self::BigUint,
-    ) -> SCResult<Address> {
+    fn get_current_winner(&self, type_id: BigUint, nft_id: BigUint) -> SCResult<ManagedAddress> {
         require!(
             self.is_up_for_auction(&type_id, &nft_id),
             "Token is not up for auction"
@@ -315,12 +306,12 @@ pub trait Erc1155Marketplace {
     #[allow(clippy::too_many_arguments)]
     fn try_create_auction(
         &self,
-        type_id: &Self::BigUint,
-        nft_id: &Self::BigUint,
-        original_owner: &Address,
+        type_id: &BigUint,
+        nft_id: &BigUint,
+        original_owner: &ManagedAddress,
         token: &TokenIdentifier,
-        min_bid: &Self::BigUint,
-        max_bid: &Self::BigUint,
+        min_bid: &BigUint,
+        max_bid: &BigUint,
         deadline: u64,
     ) -> SCResult<()> {
         require!(
@@ -342,8 +333,8 @@ pub trait Erc1155Marketplace {
             max_bid: max_bid.clone(),
             deadline,
             original_owner: original_owner.clone(),
-            current_bid: Self::BigUint::zero(),
-            current_winner: Address::zero(),
+            current_bid: self.types().big_uint_zero(),
+            current_winner: ManagedAddress::zero(),
         });
 
         Ok(())
@@ -351,10 +342,10 @@ pub trait Erc1155Marketplace {
 
     fn async_transfer_token(
         &self,
-        type_id: Self::BigUint,
-        nft_id: Self::BigUint,
-        to: Address,
-    ) -> AsyncCall<Self::SendApi> {
+        type_id: BigUint,
+        nft_id: BigUint,
+        to: ManagedAddress,
+    ) -> AsyncCall {
         let sc_own_address = self.blockchain().get_sc_address();
         let token_ownership_contract_address = self.token_ownership_contract_address().get();
 
@@ -363,29 +354,25 @@ pub trait Erc1155Marketplace {
             .async_call()
     }
 
-    fn calculate_cut_amount(
-        &self,
-        total_amount: &Self::BigUint,
-        cut_percentage: u8,
-    ) -> Self::BigUint {
-        &(total_amount * &(cut_percentage as u32).into()) / &(PERCENTAGE_TOTAL as u32).into()
+    fn calculate_cut_amount(&self, total_amount: &BigUint, cut_percentage: u8) -> BigUint {
+        total_amount * cut_percentage as u32 / PERCENTAGE_TOTAL as u32
     }
 
-    fn add_claimable_funds(&self, token_identifier: &TokenIdentifier, amount: &Self::BigUint) {
+    fn add_claimable_funds(&self, token_identifier: &TokenIdentifier, amount: &BigUint) {
         let mut mapper = self.get_claimable_funds_mapper();
         let mut total = mapper
             .get(token_identifier)
-            .unwrap_or_else(Self::BigUint::zero);
+            .unwrap_or_else(|| self.types().big_uint_zero());
         total += amount;
         mapper.insert(token_identifier.clone(), total);
     }
 
     fn clear_claimable_funds(&self, token_identifier: &TokenIdentifier) {
         let mut mapper = self.get_claimable_funds_mapper();
-        mapper.insert(token_identifier.clone(), Self::BigUint::zero());
+        mapper.insert(token_identifier.clone(), self.types().big_uint_zero());
     }
 
-    fn data_or_empty_if_sc(&self, dest: &Address, data: &'static [u8]) -> &[u8] {
+    fn data_or_empty_if_sc(&self, dest: &ManagedAddress, data: &'static [u8]) -> &[u8] {
         if self.blockchain().is_smart_contract(dest) {
             &[]
         } else {
@@ -396,34 +383,32 @@ pub trait Erc1155Marketplace {
     // proxy
 
     #[proxy]
-    fn erc1155_proxy(&self, to: Address) -> erc1155::Proxy<Self::SendApi>;
+    fn erc1155_proxy(&self, to: ManagedAddress) -> erc1155::Proxy<Self::Api>;
 
     // storage
 
     // token ownership contract, i.e. the erc1155 SC
 
     #[storage_mapper("tokenOwnershipContractAddress")]
-    fn token_ownership_contract_address(&self) -> SingleValueMapper<Self::Storage, Address>;
+    fn token_ownership_contract_address(&self) -> SingleValueMapper<ManagedAddress>;
 
     // percentage taken from winning bids
 
     #[view(getPercentageCut)]
     #[storage_mapper("percentageCut")]
-    fn percentage_cut(&self) -> SingleValueMapper<Self::Storage, u8>;
+    fn percentage_cut(&self) -> SingleValueMapper<u8>;
 
     // claimable funds - only after an auction ended and the fixed percentage has been reserved by the SC
 
     #[storage_mapper("claimableFunds")]
-    fn get_claimable_funds_mapper(
-        &self,
-    ) -> SafeMapMapper<Self::Storage, TokenIdentifier, Self::BigUint>;
+    fn get_claimable_funds_mapper(&self) -> MapMapper<TokenIdentifier, BigUint>;
 
     // auction properties for each token
 
     #[storage_mapper("auctionForToken")]
     fn auction_for_token(
         &self,
-        type_id: &Self::BigUint,
-        nft_id: &Self::BigUint,
-    ) -> SingleValueMapper<Self::Storage, Auction<Self::BigUint>>;
+        type_id: &BigUint,
+        nft_id: &BigUint,
+    ) -> SingleValueMapper<Auction<Self::Api>>;
 }

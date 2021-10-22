@@ -1,13 +1,20 @@
 use elrond_wasm::{
-    api::BigUintApi,
-    types::{Address, BoxedBytes, MultiArg7, TokenIdentifier},
+    api::ManagedTypeApi,
+    types::{BigUint, BoxedBytes, ManagedAddress, ManagedBuffer, MultiArg7, TokenIdentifier},
     Vec,
 };
 
 elrond_wasm::derive_imports!();
 
-pub type GovernanceActionAsMultiArg<BigUint> =
-    MultiArg7<u64, Address, TokenIdentifier, u64, BigUint, BoxedBytes, Vec<BoxedBytes>>;
+pub type GovernanceActionAsMultiArg<M> = MultiArg7<
+    u64,
+    ManagedAddress<M>,
+    TokenIdentifier<M>,
+    u64,
+    BigUint<M>,
+    ManagedBuffer<M>,
+    Vec<BoxedBytes>,
+>;
 
 #[derive(TypeAbi, TopEncode, TopDecode, PartialEq)]
 pub enum GovernanceProposalStatus {
@@ -20,18 +27,18 @@ pub enum GovernanceProposalStatus {
 }
 
 #[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode)]
-pub struct GovernanceAction<BigUint: BigUintApi> {
+pub struct GovernanceAction<M: ManagedTypeApi> {
     pub gas_limit: u64,
-    pub dest_address: Address,
-    pub token_id: TokenIdentifier,
+    pub dest_address: ManagedAddress<M>,
+    pub token_id: TokenIdentifier<M>,
     pub token_nonce: u64,
-    pub amount: BigUint,
-    pub function_name: BoxedBytes,
+    pub amount: BigUint<M>,
+    pub function_name: ManagedBuffer<M>,
     pub arguments: Vec<BoxedBytes>,
 }
 
-impl<BigUint: BigUintApi> GovernanceAction<BigUint> {
-    pub fn into_multiarg(self) -> GovernanceActionAsMultiArg<BigUint> {
+impl<M: ManagedTypeApi> GovernanceAction<M> {
+    pub fn into_multiarg(self) -> GovernanceActionAsMultiArg<M> {
         (
             self.gas_limit,
             self.dest_address,
@@ -46,8 +53,8 @@ impl<BigUint: BigUintApi> GovernanceAction<BigUint> {
 }
 
 #[derive(TypeAbi, TopEncode, TopDecode)]
-pub struct GovernanceProposal<BigUint: BigUintApi> {
-    pub proposer: Address,
-    pub actions: Vec<GovernanceAction<BigUint>>,
+pub struct GovernanceProposal<M: ManagedTypeApi> {
+    pub proposer: ManagedAddress<M>,
+    pub actions: Vec<GovernanceAction<M>>,
     pub description: BoxedBytes,
 }

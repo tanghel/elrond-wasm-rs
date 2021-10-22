@@ -8,13 +8,14 @@ pub trait ForwarderSftModule: storage::ForwarderStorageModule {
     #[endpoint]
     fn sft_issue(
         &self,
-        #[payment] issue_cost: Self::BigUint,
-        token_display_name: BoxedBytes,
-        token_ticker: BoxedBytes,
-    ) -> AsyncCall<Self::SendApi> {
+        #[payment] issue_cost: BigUint,
+        token_display_name: ManagedBuffer,
+        token_ticker: ManagedBuffer,
+    ) -> AsyncCall {
         let caller = self.blockchain().get_caller();
 
-        ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
+        self.send()
+            .esdt_system_sc_proxy()
             .issue_semi_fungible(
                 issue_cost,
                 &token_display_name,
@@ -35,15 +36,15 @@ pub trait ForwarderSftModule: storage::ForwarderStorageModule {
     #[callback]
     fn sft_issue_callback(
         &self,
-        caller: &Address,
-        #[call_result] result: AsyncCallResult<TokenIdentifier>,
+        caller: &ManagedAddress,
+        #[call_result] result: ManagedAsyncCallResult<TokenIdentifier>,
     ) {
         match result {
-            AsyncCallResult::Ok(token_identifier) => {
+            ManagedAsyncCallResult::Ok(token_identifier) => {
                 self.last_issued_token().set(&token_identifier);
                 self.last_error_message().clear();
             },
-            AsyncCallResult::Err(message) => {
+            ManagedAsyncCallResult::Err(message) => {
                 // return issue cost to the caller
                 let (returned_tokens, token_identifier) = self.call_value().payment_token_pair();
                 if token_identifier.is_egld() && returned_tokens > 0 {

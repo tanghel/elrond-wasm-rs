@@ -1,13 +1,30 @@
-use super::ArwenBigUint;
-use crate::ArwenApiImpl;
-use elrond_wasm::api::BlockchainApi;
-use elrond_wasm::types::{
-    Address, Box, BoxedBytes, EsdtTokenData, EsdtTokenType, TokenIdentifier, H256,
+use crate::api::managed_types::managed_buffer_api_node::unsafe_buffer_load_address;
+use elrond_wasm::{
+    api::BlockchainApi,
+    types::{
+        Address, BigUint, Box, EsdtTokenData, EsdtTokenType, ManagedAddress, ManagedBuffer,
+        ManagedType, ManagedVec, TokenIdentifier, H256,
+    },
 };
 
+#[allow(unused)]
 extern "C" {
+    // managed buffer API
+    fn mBufferNew() -> i32;
+
+    // address utils
     fn getSCAddress(resultOffset: *mut u8);
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn managedSCAddress(resultHandle: i32);
+
     fn getOwnerAddress(resultOffset: *mut u8);
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn managedOwnerAddress(resultHandle: i32);
+
+    fn getCaller(resultOffset: *mut u8);
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn managedCaller(resultHandle: i32);
+
     fn getShardOfAddress(address_ptr: *const u8) -> i32;
     fn isSmartContract(address_ptr: *const u8) -> i32;
 
@@ -18,8 +35,6 @@ extern "C" {
     /// Currently not used.
     #[allow(dead_code)]
     fn getFunction(functionOffset: *const u8) -> i32;
-
-    fn getCaller(resultOffset: *mut u8);
 
     fn getGasLeft() -> i64;
     fn getBlockTimestamp() -> i64;
@@ -36,6 +51,16 @@ extern "C" {
     fn getPrevBlockEpoch() -> i64;
     fn getPrevBlockRandomSeed(resultOffset: *const u8);
     fn getOriginalTxHash(resultOffset: *const u8);
+
+    // Managed versions of the above
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn managedGetPrevBlockRandomSeed(resultHandle: i32);
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn managedGetBlockRandomSeed(resultHandle: i32);
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn managedGetStateRootHash(resultHandle: i32);
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn managedGetOriginalTxHash(resultHandle: i32);
 
     // big int API
     fn bigIntNew(value: i64) -> i32;
@@ -88,13 +113,26 @@ extern "C" {
         tokenIDLen: i32,
         nonce: i64,
     ) -> i32;
+
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn managedGetESDTTokenData(
+        addressHandle: i32,
+        tokenIDHandle: i32,
+        nonce: i64,
+        valueHandle: i32,
+        propertiesHandle: i32,
+        hashHandle: i32,
+        nameHandle: i32,
+        attributesHandle: i32,
+        creatorHandle: i32,
+        royaltiesHandle: i32,
+        urisHandle: i32,
+    );
 }
 
-impl BlockchainApi for ArwenApiImpl {
-    type BalanceType = ArwenBigUint;
-
+impl BlockchainApi for crate::ArwenApiImpl {
     #[inline]
-    fn get_sc_address(&self) -> Address {
+    fn get_sc_address_legacy(&self) -> Address {
         unsafe {
             let mut res = Address::zero();
             getSCAddress(res.as_mut_ptr());
@@ -103,7 +141,17 @@ impl BlockchainApi for ArwenApiImpl {
     }
 
     #[inline]
-    fn get_owner_address(&self) -> Address {
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn get_sc_address(&self) -> ManagedAddress<Self> {
+        unsafe {
+            let handle = mBufferNew();
+            managedSCAddress(handle);
+            ManagedAddress::from_raw_handle(self.clone(), handle)
+        }
+    }
+
+    #[inline]
+    fn get_owner_address_legacy(&self) -> Address {
         unsafe {
             let mut res = Address::zero();
             getOwnerAddress(res.as_mut_ptr());
@@ -112,17 +160,37 @@ impl BlockchainApi for ArwenApiImpl {
     }
 
     #[inline]
-    fn get_shard_of_address(&self, address: &Address) -> u32 {
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn get_owner_address(&self) -> ManagedAddress<Self> {
+        unsafe {
+            let handle = mBufferNew();
+            managedOwnerAddress(handle);
+            ManagedAddress::from_raw_handle(self.clone(), handle)
+        }
+    }
+
+    #[inline]
+    fn get_shard_of_address_legacy(&self, address: &Address) -> u32 {
         unsafe { getShardOfAddress(address.as_ref().as_ptr()) as u32 }
     }
 
     #[inline]
-    fn is_smart_contract(&self, address: &Address) -> bool {
+    fn get_shard_of_address(&self, address: &ManagedAddress<Self>) -> u32 {
+        unsafe { getShardOfAddress(unsafe_buffer_load_address(address.get_raw_handle())) as u32 }
+    }
+
+    #[inline]
+    fn is_smart_contract_legacy(&self, address: &Address) -> bool {
         unsafe { isSmartContract(address.as_ref().as_ptr()) > 0 }
     }
 
     #[inline]
-    fn get_caller(&self) -> Address {
+    fn is_smart_contract(&self, address: &ManagedAddress<Self>) -> bool {
+        unsafe { isSmartContract(unsafe_buffer_load_address(address.get_raw_handle())) > 0 }
+    }
+
+    #[inline]
+    fn get_caller_legacy(&self) -> Address {
         unsafe {
             let mut res = Address::zero();
             getCaller(res.as_mut_ptr());
@@ -130,20 +198,70 @@ impl BlockchainApi for ArwenApiImpl {
         }
     }
 
-    fn get_balance(&self, address: &Address) -> ArwenBigUint {
+    #[inline]
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn get_caller(&self) -> ManagedAddress<Self> {
         unsafe {
-            let result = bigIntNew(0);
-            bigIntGetExternalBalance(address.as_ref().as_ptr(), result);
-            ArwenBigUint { handle: result }
+            let handle = mBufferNew();
+            managedCaller(handle);
+            ManagedAddress::from_raw_handle(self.clone(), handle)
+        }
+    }
+
+    fn get_balance_legacy(&self, address: &Address) -> BigUint<Self> {
+        unsafe {
+            let balance_handle = bigIntNew(0);
+            bigIntGetExternalBalance(address.as_ref().as_ptr(), balance_handle);
+            BigUint::from_raw_handle(self.clone(), balance_handle)
+        }
+    }
+
+    fn get_balance(&self, address: &ManagedAddress<Self>) -> BigUint<Self> {
+        unsafe {
+            let balance_handle = bigIntNew(0);
+            bigIntGetExternalBalance(
+                unsafe_buffer_load_address(address.get_raw_handle()),
+                balance_handle,
+            );
+            BigUint::from_raw_handle(self.clone(), balance_handle)
         }
     }
 
     #[inline]
-    fn get_tx_hash(&self) -> H256 {
+    fn get_state_root_hash_legacy(&self) -> H256 {
         unsafe {
             let mut res = H256::zero();
             getOriginalTxHash(res.as_mut_ptr());
             res
+        }
+    }
+
+    #[inline]
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn get_state_root_hash(&self) -> elrond_wasm::types::ManagedByteArray<Self, 32> {
+        unsafe {
+            let result_handle = mBufferNew();
+            managedGetStateRootHash(result_handle);
+            elrond_wasm::types::ManagedByteArray::from_raw_handle(self.clone(), result_handle)
+        }
+    }
+
+    #[inline]
+    fn get_tx_hash_legacy(&self) -> H256 {
+        unsafe {
+            let mut res = H256::zero();
+            getOriginalTxHash(res.as_mut_ptr());
+            res
+        }
+    }
+
+    #[inline]
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn get_tx_hash(&self) -> elrond_wasm::types::ManagedByteArray<Self, 32> {
+        unsafe {
+            let result_handle = mBufferNew();
+            managedGetOriginalTxHash(result_handle);
+            elrond_wasm::types::ManagedByteArray::from_raw_handle(self.clone(), result_handle)
         }
     }
 
@@ -173,11 +291,21 @@ impl BlockchainApi for ArwenApiImpl {
     }
 
     #[inline]
-    fn get_block_random_seed(&self) -> Box<[u8; 48]> {
+    fn get_block_random_seed_legacy(&self) -> Box<[u8; 48]> {
         unsafe {
             let mut res = [0u8; 48];
             getBlockRandomSeed(res.as_mut_ptr());
             Box::new(res)
+        }
+    }
+
+    #[inline]
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn get_block_random_seed(&self) -> elrond_wasm::types::ManagedByteArray<Self, 48> {
+        unsafe {
+            let result_handle = mBufferNew();
+            managedGetBlockRandomSeed(result_handle);
+            elrond_wasm::types::ManagedByteArray::from_raw_handle(self.clone(), result_handle)
         }
     }
 
@@ -202,7 +330,7 @@ impl BlockchainApi for ArwenApiImpl {
     }
 
     #[inline]
-    fn get_prev_block_random_seed(&self) -> Box<[u8; 48]> {
+    fn get_prev_block_random_seed_legacy(&self) -> Box<[u8; 48]> {
         unsafe {
             let mut res = [0u8; 48];
             getPrevBlockRandomSeed(res.as_mut_ptr());
@@ -211,11 +339,21 @@ impl BlockchainApi for ArwenApiImpl {
     }
 
     #[inline]
-    fn get_current_esdt_nft_nonce(&self, address: &Address, token: &TokenIdentifier) -> u64 {
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn get_prev_block_random_seed(&self) -> elrond_wasm::types::ManagedByteArray<Self, 48> {
+        unsafe {
+            let result_handle = mBufferNew();
+            managedGetPrevBlockRandomSeed(result_handle);
+            elrond_wasm::types::ManagedByteArray::from_raw_handle(self.clone(), result_handle)
+        }
+    }
+
+    #[inline]
+    fn get_current_esdt_nft_nonce(&self, address: &Address, token: &TokenIdentifier<Self>) -> u64 {
         unsafe {
             getCurrentESDTNFTNonce(
                 address.as_ref().as_ptr(),
-                token.as_ptr(),
+                token.to_esdt_identifier().as_ptr(),
                 token.len() as i32,
             ) as u64
         }
@@ -224,85 +362,88 @@ impl BlockchainApi for ArwenApiImpl {
     #[inline]
     fn get_esdt_balance(
         &self,
-        address: &Address,
-        token: &TokenIdentifier,
+        m_address: &ManagedAddress<Self>,
+        token: &TokenIdentifier<Self>,
         nonce: u64,
-    ) -> ArwenBigUint {
+    ) -> BigUint<Self> {
+        let address = m_address.to_address();
         unsafe {
-            let result = bigIntNew(0);
+            let balance_handle = bigIntNew(0);
             bigIntGetESDTExternalBalance(
                 address.as_ref().as_ptr(),
-                token.as_ptr(),
+                token.to_esdt_identifier().as_ptr(),
                 token.len() as i32,
                 nonce as i64,
-                result,
+                balance_handle,
             );
 
-            ArwenBigUint { handle: result }
+            BigUint::from_raw_handle(self.clone(), balance_handle)
         }
     }
 
-    #[inline]
+    #[cfg(feature = "unmanaged-ei")]
     fn get_esdt_token_data(
         &self,
-        address: &Address,
-        token: &TokenIdentifier,
+        m_address: &ManagedAddress<Self>,
+        token: &TokenIdentifier<Self>,
         nonce: u64,
-    ) -> EsdtTokenData<ArwenBigUint> {
+    ) -> EsdtTokenData<Self> {
+        use elrond_wasm::types::BoxedBytes;
+        let address = m_address.to_address();
         unsafe {
-            let value = bigIntNew(0);
+            let value_handle = bigIntNew(0);
             let mut properties = [0u8; 2]; // always 2 bytes
             let mut hash = BoxedBytes::allocate(128);
 
             let name_len = getESDTNFTNameLength(
                 address.as_ref().as_ptr(),
-                token.as_ptr(),
+                token.to_esdt_identifier().as_ptr(),
                 token.len() as i32,
                 nonce as i64,
             ) as usize;
-            let mut name_buffer = BoxedBytes::allocate(name_len);
+            let mut name_bytes = BoxedBytes::allocate(name_len);
 
             let attr_len = getESDTNFTAttributeLength(
                 address.as_ref().as_ptr(),
-                token.as_ptr(),
+                token.to_esdt_identifier().as_ptr(),
                 token.len() as i32,
                 nonce as i64,
             ) as usize;
-            let mut attr_buffer = BoxedBytes::allocate(attr_len);
+            let mut attr_bytes = BoxedBytes::allocate(attr_len);
 
             // Current implementation of the underlying API only provides one URI
             // In the future, this might be extended to multiple URIs per token,
             // Hence the EsdtTokenData receives a Vec<BoxedBytes>
             let uris_len = getESDTNFTURILength(
                 address.as_ref().as_ptr(),
-                token.as_ptr(),
+                token.to_esdt_identifier().as_ptr(),
                 token.len() as i32,
                 nonce as i64,
             ) as usize;
-            let mut uris_buffer = BoxedBytes::allocate(uris_len);
+            let mut uri_bytes = BoxedBytes::allocate(uris_len);
 
             let mut creator = Address::zero();
-            let royalties = bigIntNew(0);
+            let royalties_handle = bigIntNew(0);
 
             getESDTTokenData(
                 address.as_ref().as_ptr(),
-                token.as_ptr(),
+                token.to_esdt_identifier().as_ptr(),
                 token.len() as i32,
                 nonce as i64,
-                value,
+                value_handle,
                 properties.as_mut_ptr(),
                 hash.as_mut_ptr(),
-                name_buffer.as_mut_ptr(),
-                attr_buffer.as_mut_ptr(),
+                name_bytes.as_mut_ptr(),
+                attr_bytes.as_mut_ptr(),
                 creator.as_mut_ptr(),
-                royalties,
-                uris_buffer.as_mut_ptr(),
+                royalties_handle,
+                uri_bytes.as_mut_ptr(),
             );
 
             // Fungible always have a nonce of 0, so we check nonce to figure out the type
             let nonce = getCurrentESDTNFTNonce(
                 address.as_ref().as_ptr(),
-                token.as_ptr(),
+                token.to_esdt_identifier().as_ptr(),
                 token.len() as i32,
             );
             let token_type = if nonce == 0 {
@@ -311,19 +452,83 @@ impl BlockchainApi for ArwenApiImpl {
                 EsdtTokenType::NonFungible
             };
 
-            // Token is frozen is properties is not 0
+            // Token is frozen if properties are not 0
             let frozen = properties[0] == 0 && properties[1] == 0;
+
+            let mut uris_vec = ManagedVec::new(self.clone());
+            uris_vec.push(ManagedBuffer::new_from_bytes(
+                self.clone(),
+                uri_bytes.as_slice(),
+            ));
 
             EsdtTokenData {
                 token_type,
-                amount: ArwenBigUint { handle: value },
+                amount: BigUint::from_raw_handle(self.clone(), value_handle),
                 frozen,
-                hash,
-                name: name_buffer,
-                attributes: attr_buffer,
-                creator,
-                royalties: ArwenBigUint { handle: royalties },
-                uris: [uris_buffer].to_vec(),
+                hash: ManagedBuffer::new_from_bytes(self.clone(), hash.as_slice()),
+                name: ManagedBuffer::new_from_bytes(self.clone(), name_bytes.as_slice()),
+                attributes: ManagedBuffer::new_from_bytes(self.clone(), attr_bytes.as_slice()),
+                creator: ManagedAddress::from_address(self.clone(), &creator),
+                royalties: BigUint::from_raw_handle(self.clone(), royalties_handle),
+                uris: uris_vec,
+            }
+        }
+    }
+
+    #[cfg(not(feature = "unmanaged-ei"))]
+    fn get_esdt_token_data(
+        &self,
+        address: &ManagedAddress<Self>,
+        token: &TokenIdentifier<Self>,
+        nonce: u64,
+    ) -> EsdtTokenData<Self> {
+        let managed_token_id = token.as_managed_buffer();
+        unsafe {
+            let value_handle = bigIntNew(0);
+            let properties_handle = mBufferNew();
+            let hash_handle = mBufferNew();
+            let name_handle = mBufferNew();
+            let attributes_handle = mBufferNew();
+            let creator_handle = mBufferNew();
+            let royalties_handle = bigIntNew(0);
+            let uris_handle = mBufferNew();
+
+            managedGetESDTTokenData(
+                address.get_raw_handle(),
+                managed_token_id.get_raw_handle(),
+                nonce as i64,
+                value_handle,
+                properties_handle,
+                hash_handle,
+                name_handle,
+                attributes_handle,
+                creator_handle,
+                royalties_handle,
+                uris_handle,
+            );
+
+            let token_type = if nonce == 0 {
+                EsdtTokenType::Fungible
+            } else {
+                EsdtTokenType::NonFungible
+            };
+
+            // here we trust Arwen that it always gives us a properties buffer of length 2
+            let properties_buffer = ManagedBuffer::from_raw_handle(self.clone(), properties_handle);
+            let mut properties_bytes = [0u8; 2];
+            let _ = properties_buffer.load_slice(0, &mut properties_bytes[..]);
+            let frozen = properties_bytes[0] == 0 && properties_bytes[1] == 0; // token is frozen if properties are not 0
+
+            EsdtTokenData {
+                token_type,
+                amount: BigUint::from_raw_handle(self.clone(), value_handle),
+                frozen,
+                hash: ManagedBuffer::from_raw_handle(self.clone(), hash_handle),
+                name: ManagedBuffer::from_raw_handle(self.clone(), name_handle),
+                attributes: ManagedBuffer::from_raw_handle(self.clone(), attributes_handle),
+                creator: ManagedAddress::from_raw_handle(self.clone(), creator_handle),
+                royalties: BigUint::from_raw_handle(self.clone(), royalties_handle),
+                uris: ManagedVec::from_raw_handle(self.clone(), uris_handle),
             }
         }
     }

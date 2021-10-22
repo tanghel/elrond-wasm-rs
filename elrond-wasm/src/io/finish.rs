@@ -1,17 +1,22 @@
-use crate::api::{EndpointFinishApi, ErrorApi};
-use crate::elrond_codec::{EncodeError, TopEncode, TopEncodeOutput};
-use crate::Vec;
+use elrond_codec::TryStaticCast;
+
+use crate::{
+    api::{EndpointFinishApi, ErrorApi, ManagedTypeApi},
+    elrond_codec::{EncodeError, TopEncode, TopEncodeOutput},
+    err_msg,
+    types::{BigInt, BigUint, ManagedBuffer, ManagedType},
+};
 
 struct ApiOutputAdapter<FA>
 where
-    FA: EndpointFinishApi + Clone + 'static,
+    FA: ManagedTypeApi + EndpointFinishApi + Clone + 'static,
 {
     api: FA,
 }
 
 impl<FA> ApiOutputAdapter<FA>
 where
-    FA: EndpointFinishApi + Clone + 'static,
+    FA: ManagedTypeApi + EndpointFinishApi + Clone + 'static,
 {
     #[inline]
     fn new(api: FA) -> Self {
@@ -21,8 +26,10 @@ where
 
 impl<FA> TopEncodeOutput for ApiOutputAdapter<FA>
 where
-    FA: EndpointFinishApi + Clone + 'static,
+    FA: ManagedTypeApi + EndpointFinishApi + Clone + 'static,
 {
+    type NestedBuffer = ManagedBuffer<FA>;
+
     fn set_slice_u8(self, bytes: &[u8]) {
         self.api.finish_slice_u8(bytes);
     }
@@ -41,13 +48,31 @@ where
     }
 
     #[inline]
-    fn set_big_int_handle_or_bytes<F: FnOnce() -> Vec<u8>>(self, handle: i32, _else_bytes: F) {
-        self.api.finish_big_int_raw(handle);
+    fn set_specialized<T, F>(self, value: &T, else_serialization: F) -> Result<(), EncodeError>
+    where
+        T: TryStaticCast,
+        F: FnOnce(Self) -> Result<(), EncodeError>,
+    {
+        if let Some(managed_buffer) = value.try_cast_ref::<ManagedBuffer<FA>>() {
+            self.api.finish_managed_buffer_raw(managed_buffer.handle);
+            Ok(())
+        } else if let Some(big_uint) = value.try_cast_ref::<BigUint<FA>>() {
+            self.api.finish_big_uint_raw(big_uint.handle);
+            Ok(())
+        } else if let Some(big_int) = value.try_cast_ref::<BigInt<FA>>() {
+            self.api.finish_big_int_raw(big_int.handle);
+            Ok(())
+        } else {
+            else_serialization(self)
+        }
     }
 
-    #[inline]
-    fn set_big_uint_handle_or_bytes<F: FnOnce() -> Vec<u8>>(self, handle: i32, _else_bytes: F) {
-        self.api.finish_big_uint_raw(handle);
+    fn start_nested_encode(&self) -> Self::NestedBuffer {
+        ManagedBuffer::new(self.api.clone())
+    }
+
+    fn finalize_nested_encode(self, nb: Self::NestedBuffer) {
+        self.api.finish_managed_buffer_raw(nb.handle);
     }
 }
 
@@ -59,7 +84,7 @@ pub trait EndpointResult: Sized {
 
     fn finish<FA>(&self, api: FA)
     where
-        FA: EndpointFinishApi + Clone + 'static;
+        FA: ManagedTypeApi + EndpointFinishApi + Clone + 'static;
 }
 
 /// All serializable objects can be used as smart contract function result.
@@ -71,16 +96,19 @@ where
 
     fn finish<FA>(&self, api: FA)
     where
-        FA: EndpointFinishApi + Clone + 'static,
+        FA: ManagedTypeApi + EndpointFinishApi + Clone + 'static,
     {
         self.top_encode_or_exit(ApiOutputAdapter::new(api.clone()), api, finish_exit);
     }
 }
 
 #[inline(always)]
-fn finish_exit<FA>(api: FA, en_err: EncodeError) -> !
+fn finish_exit<FA>(api: FA, encode_err: EncodeError) -> !
 where
-    FA: EndpointFinishApi + ErrorApi + 'static,
+    FA: ManagedTypeApi + EndpointFinishApi + ErrorApi + 'static,
 {
-    api.signal_error(en_err.message_bytes())
+    let mut message_buffer =
+        ManagedBuffer::new_from_bytes(api.clone(), err_msg::FINISH_ENCODE_ERROR);
+    message_buffer.append_bytes(encode_err.message_bytes());
+    api.signal_error_from_buffer(message_buffer.get_raw_handle())
 }

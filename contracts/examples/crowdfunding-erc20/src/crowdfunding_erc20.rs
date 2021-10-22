@@ -13,14 +13,14 @@ pub enum Status {
 #[elrond_wasm::contract]
 pub trait Crowdfunding {
     #[init]
-    fn init(&self, target: Self::BigUint, deadline: u64, erc20_contract_address: Address) {
+    fn init(&self, target: BigUint, deadline: u64, erc20_contract_address: ManagedAddress) {
         self.erc20_contract_address().set(&erc20_contract_address);
         self.target().set(&target);
         self.deadline().set(&deadline);
     }
 
     #[endpoint]
-    fn fund(&self, token_amount: Self::BigUint) -> SCResult<AsyncCall<Self::SendApi>> {
+    fn fund(&self, token_amount: BigUint) -> SCResult<AsyncCall> {
         require!(
             self.blockchain().get_block_nonce() <= self.deadline().get(),
             "cannot fund after deadline"
@@ -46,7 +46,7 @@ pub trait Crowdfunding {
             Status::FundingPeriod
         } else if self
             .blockchain()
-            .get_sc_balance(&TokenIdentifier::egld(), 0)
+            .get_sc_balance(&self.types().token_identifier_egld(), 0)
             >= self.target().get()
         {
             Status::Successful
@@ -56,7 +56,7 @@ pub trait Crowdfunding {
     }
 
     #[endpoint]
-    fn claim(&self) -> SCResult<OptionalResult<AsyncCall<Self::SendApi>>> {
+    fn claim(&self) -> SCResult<OptionalResult<AsyncCall>> {
         match self.status() {
             Status::FundingPeriod => sc_error!("cannot claim before deadline"),
             Status::Successful => {
@@ -98,12 +98,12 @@ pub trait Crowdfunding {
     #[callback]
     fn transfer_from_callback(
         &self,
-        #[call_result] result: AsyncCallResult<()>,
-        cb_sender: Address,
-        cb_amount: Self::BigUint,
-    ) -> OptionalResult<AsyncCall<Self::SendApi>> {
+        #[call_result] result: ManagedAsyncCallResult<()>,
+        cb_sender: ManagedAddress,
+        cb_amount: BigUint,
+    ) -> OptionalResult<AsyncCall> {
         match result {
-            AsyncCallResult::Ok(()) => {
+            ManagedAsyncCallResult::Ok(()) => {
                 // transaction started before deadline, ended after -> refund
                 if self.blockchain().get_block_nonce() > self.deadline().get() {
                     let erc20_address = self.erc20_contract_address().get();
@@ -120,34 +120,34 @@ pub trait Crowdfunding {
 
                 OptionalResult::None
             },
-            AsyncCallResult::Err(_) => OptionalResult::None,
+            ManagedAsyncCallResult::Err(_) => OptionalResult::None,
         }
     }
 
     // proxy
 
     #[proxy]
-    fn erc20_proxy(&self, to: Address) -> erc20::Proxy<Self::SendApi>;
+    fn erc20_proxy(&self, to: ManagedAddress) -> erc20::Proxy<Self::Api>;
 
     // storage
 
     #[view(get_target)]
     #[storage_mapper("target")]
-    fn target(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn target(&self) -> SingleValueMapper<BigUint>;
 
     #[view(get_deadline)]
     #[storage_mapper("deadline")]
-    fn deadline(&self) -> SingleValueMapper<Self::Storage, u64>;
+    fn deadline(&self) -> SingleValueMapper<u64>;
 
     #[view(get_deposit)]
     #[storage_mapper("deposit")]
-    fn deposit(&self, donor: &Address) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn deposit(&self, donor: &ManagedAddress) -> SingleValueMapper<BigUint>;
 
     #[view(get_erc20_contract_address)]
-    #[storage_mapper("erc20_contract_address")]
-    fn erc20_contract_address(&self) -> SingleValueMapper<Self::Storage, Address>;
+    #[storage_mapper("erc20ContractAddress")]
+    fn erc20_contract_address(&self) -> SingleValueMapper<ManagedAddress>;
 
     #[view(get_total_balance)]
-    #[storage_mapper("erc20_balance")]
-    fn total_balance(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    #[storage_mapper("erc20Balance")]
+    fn total_balance(&self) -> SingleValueMapper<BigUint>;
 }

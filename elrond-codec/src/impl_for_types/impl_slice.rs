@@ -1,14 +1,15 @@
-use crate::codec_err::{DecodeError, EncodeError};
-use crate::nested_de::NestedDecode;
-use crate::nested_ser::NestedEncode;
-use crate::nested_ser_output::NestedEncodeOutput;
-use crate::top_de::TopDecode;
-use crate::top_de_input::TopDecodeInput;
-use crate::top_ser::TopEncode;
-use crate::top_ser_output::TopEncodeOutput;
-use crate::{vec_into_boxed_slice, TypeInfo};
-use alloc::boxed::Box;
-use alloc::vec::Vec;
+use crate::{
+    codec_err::{DecodeError, EncodeError},
+    nested_de::NestedDecode,
+    nested_ser::NestedEncode,
+    nested_ser_output::NestedEncodeOutput,
+    top_de::TopDecode,
+    top_de_input::TopDecodeInput,
+    top_ser::TopEncode,
+    top_ser_output::TopEncodeOutput,
+    vec_into_boxed_slice, TypeInfo,
+};
+use alloc::{boxed::Box, vec::Vec};
 
 /// Adds the concantenated encoded contents of a slice to an output buffer,
 /// without serializing the slice length.
@@ -72,9 +73,9 @@ impl<T: NestedEncode> TopEncode for &[T] {
                 // only using `dep_encode_slice_contents` for non-u8,
                 // because it always appends to the buffer,
                 // which is not necessary above
-                let mut buffer = Vec::<u8>::new();
+                let mut buffer = output.start_nested_encode();
                 dep_encode_slice_contents(self, &mut buffer)?;
-                output.set_slice_u8(&buffer[..]);
+                output.finalize_nested_encode(buffer);
             },
         }
         Ok(())
@@ -98,11 +99,11 @@ impl<T: NestedEncode> TopEncode for &[T] {
                 // only using `dep_encode_slice_contents` for non-u8,
                 // because it always appends to the buffer,
                 // which is not necessary above
-                let mut buffer = Vec::<u8>::new();
+                let mut buffer = output.start_nested_encode();
                 for x in *self {
                     x.dep_encode_or_exit(&mut buffer, c.clone(), exit);
                 }
-                output.set_slice_u8(&buffer[..]);
+                output.finalize_nested_encode(buffer);
             },
         }
     }

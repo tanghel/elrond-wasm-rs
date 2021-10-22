@@ -1,8 +1,10 @@
 use crate::abi::TypeAbi;
-use alloc::alloc::{alloc, alloc_zeroed, realloc, Layout};
-use alloc::boxed::Box;
-use alloc::string::String;
-use alloc::vec::Vec;
+use alloc::{
+    alloc::{alloc, alloc_zeroed, realloc, Layout},
+    boxed::Box,
+    string::String,
+    vec::Vec,
+};
 use elrond_codec::*;
 
 /// Simple wrapper around a boxed byte slice,
@@ -63,8 +65,18 @@ impl BoxedBytes {
     }
 
     #[inline]
+    pub fn into_vec(self) -> Vec<u8> {
+        self.0.into_vec()
+    }
+
+    #[inline]
     pub fn as_slice(&self) -> &[u8] {
         &*self.0
+    }
+
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        &mut *self.0
     }
 
     /// Create new instance by concatenating several byte slices.
@@ -153,10 +165,27 @@ impl From<Vec<u8>> for BoxedBytes {
     }
 }
 
+impl From<&Vec<u8>> for BoxedBytes {
+    #[inline]
+    fn from(v: &Vec<u8>) -> Self {
+        BoxedBytes::from(v.as_slice())
+    }
+}
+
 /// This allows us to use a mutable BoxedBytes as top encode output.
 impl TopEncodeOutput for &mut BoxedBytes {
+    type NestedBuffer = Vec<u8>;
+
     fn set_slice_u8(self, bytes: &[u8]) {
         *self = BoxedBytes::from(bytes);
+    }
+
+    fn start_nested_encode(&self) -> Self::NestedBuffer {
+        Vec::<u8>::new()
+    }
+
+    fn finalize_nested_encode(self, nb: Self::NestedBuffer) {
+        self.set_slice_u8(nb.as_slice());
     }
 }
 
@@ -201,8 +230,11 @@ impl TopEncode for BoxedBytes {
 impl NestedDecode for BoxedBytes {
     fn dep_decode<I: NestedDecodeInput>(input: &mut I) -> Result<Self, DecodeError> {
         let size = usize::dep_decode(input)?;
-        let byte_slice = input.read_slice(size)?;
-        Ok(byte_slice.into())
+        unsafe {
+            let mut result = BoxedBytes::allocate(size);
+            input.read_into(result.as_mut_slice())?;
+            Ok(result)
+        }
     }
 
     fn dep_decode_or_exit<I: NestedDecodeInput, ExitCtx: Clone>(
@@ -211,8 +243,11 @@ impl NestedDecode for BoxedBytes {
         exit: fn(ExitCtx, DecodeError) -> !,
     ) -> Self {
         let size = usize::dep_decode_or_exit(input, c.clone(), exit);
-        let byte_slice = input.read_slice_or_exit(size, c, exit);
-        byte_slice.into()
+        unsafe {
+            let mut result = BoxedBytes::allocate(size);
+            input.read_into_or_exit(result.as_mut_slice(), c, exit);
+            result
+        }
     }
 }
 

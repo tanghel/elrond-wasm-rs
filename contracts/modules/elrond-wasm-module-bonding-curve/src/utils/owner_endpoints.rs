@@ -1,9 +1,13 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use crate::function_selector::FunctionSelector;
-use crate::utils::structs::{BondingCurve, TokenOwnershipData};
-use crate::utils::{events, storage};
+use crate::{
+    function_selector::FunctionSelector,
+    utils::{
+        events, storage,
+        structs::{BondingCurve, TokenOwnershipData},
+    },
+};
 
 use super::structs::CurveArguments;
 
@@ -12,12 +16,13 @@ pub trait OwnerEndpointsModule: storage::StorageModule + events::EventsModule {
     #[endpoint(setLocalRoles)]
     fn set_local_roles(
         &self,
-        address: Address,
+        address: ManagedAddress,
         token_identifier: TokenIdentifier,
-        #[var_args] roles: VarArgs<EsdtLocalRole>,
-    ) -> AsyncCall<Self::SendApi> {
-        ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
-            .set_special_roles(&address, &token_identifier, roles.as_slice())
+        #[var_args] roles: ManagedVarArgs<EsdtLocalRole>,
+    ) -> AsyncCall {
+        self.send()
+            .esdt_system_sc_proxy()
+            .set_special_roles(&address, &token_identifier, roles.into_iter())
             .async_call()
             .with_callback(OwnerEndpointsModule::callbacks(self).change_roles_callback())
     }
@@ -25,21 +30,25 @@ pub trait OwnerEndpointsModule: storage::StorageModule + events::EventsModule {
     #[endpoint(unsetLocalRoles)]
     fn unset_local_roles(
         &self,
-        address: Address,
+        address: ManagedAddress,
         token_identifier: TokenIdentifier,
-        #[var_args] roles: VarArgs<EsdtLocalRole>,
-    ) -> AsyncCall<Self::SendApi> {
-        ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
-            .unset_special_roles(&address, &token_identifier, roles.as_slice())
+        #[var_args] roles: ManagedVarArgs<EsdtLocalRole>,
+    ) -> AsyncCall {
+        self.send()
+            .esdt_system_sc_proxy()
+            .unset_special_roles(&address, &token_identifier, roles.into_iter())
             .async_call()
             .with_callback(OwnerEndpointsModule::callbacks(self).change_roles_callback())
     }
 
     #[callback]
-    fn change_roles_callback(&self, #[call_result] result: AsyncCallResult<()>) -> SCResult<()> {
+    fn change_roles_callback(
+        &self,
+        #[call_result] result: ManagedAsyncCallResult<()>,
+    ) -> SCResult<(), ManagedSCError> {
         match result {
-            AsyncCallResult::Ok(()) => Ok(()),
-            AsyncCallResult::Err(message) => Err(message.err_msg.into()),
+            ManagedAsyncCallResult::Ok(()) => Ok(()),
+            ManagedAsyncCallResult::Err(message) => Err(message.err_msg.into()),
         }
     }
 
@@ -47,7 +56,7 @@ pub trait OwnerEndpointsModule: storage::StorageModule + events::EventsModule {
     fn set_bonding_curve(
         &self,
         identifier: TokenIdentifier,
-        function: FunctionSelector<Self::BigUint>,
+        function: FunctionSelector<Self::Api>,
         sell_availability: bool,
     ) -> SCResult<()> {
         require!(
@@ -73,13 +82,13 @@ pub trait OwnerEndpointsModule: storage::StorageModule + events::EventsModule {
     #[payable("*")]
     fn deposit(
         &self,
-        #[payment] amount: Self::BigUint,
+        #[payment] amount: BigUint,
         #[payment_token] identifier: TokenIdentifier,
         #[payment_nonce] nonce: u64,
         #[var_args] payment_token: OptionalArg<TokenIdentifier>,
     ) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
-        let mut set_payment = TokenIdentifier::egld();
+        let mut set_payment = self.types().token_identifier_egld();
         if self.bonding_curve(&identifier).is_empty() {
             set_payment = payment_token
                 .into_option()
@@ -139,13 +148,13 @@ pub trait OwnerEndpointsModule: storage::StorageModule + events::EventsModule {
     fn set_curve_storage(
         &self,
         identifier: &TokenIdentifier,
-        amount: Self::BigUint,
+        amount: BigUint,
         payment: TokenIdentifier,
     ) {
         let mut curve = FunctionSelector::None;
         let mut arguments;
         let payment_token;
-        let payment_amount: Self::BigUint;
+        let payment_amount: BigUint;
         let sell_availability: bool;
 
         if self.bonding_curve(identifier).is_empty() {
@@ -154,7 +163,7 @@ pub trait OwnerEndpointsModule: storage::StorageModule + events::EventsModule {
                 balance: amount,
             };
             payment_token = payment;
-            payment_amount = Self::BigUint::zero();
+            payment_amount = self.types().big_uint_zero();
             sell_availability = false;
         } else {
             let bonding_curve = self.bonding_curve(identifier).get();

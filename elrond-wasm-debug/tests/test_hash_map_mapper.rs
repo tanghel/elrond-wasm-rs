@@ -1,9 +1,13 @@
-use elrond_wasm::storage::mappers::{SafeMapMapper, StorageClearable, StorageMapper};
-use elrond_wasm::types::BoxedBytes;
-use elrond_wasm_debug::TxContext;
+use elrond_wasm::storage::{
+    mappers::{MapMapper, StorageClearable, StorageMapper},
+    StorageKey,
+};
+use elrond_wasm_debug::DebugApi;
 
-fn create_map() -> SafeMapMapper<TxContext, u64, u64> {
-    SafeMapMapper::new(TxContext::dummy(), BoxedBytes::from_concat(&[b"my_map"]))
+fn create_map() -> MapMapper<DebugApi, u64, u64> {
+    let api = DebugApi::dummy();
+    let base_key = StorageKey::new(api.clone(), &b"my_map"[..]);
+    MapMapper::new(api, base_key)
 }
 
 #[test]

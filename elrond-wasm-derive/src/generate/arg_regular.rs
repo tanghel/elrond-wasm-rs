@@ -9,14 +9,15 @@ pub fn generate_load_single_arg(
     let arg_name_expr = arg_id_literal(&arg.pat);
     match &arg.ty {
         syn::Type::Reference(type_reference) => {
-            if type_reference.mutability.is_some() {
-                panic!("Mutable references not supported as contract method arguments");
-            }
+            assert!(
+                type_reference.mutability.is_none(),
+                "Mutable references not supported as contract method arguments"
+            );
             if let syn::Type::Slice(slice_type) = &*type_reference.elem {
                 // deserialize as boxed slice, so we have an owned object that we can reference
                 let slice_elem = &slice_type.elem;
                 quote! {
-                    elrond_wasm::load_single_arg::<Self::ArgumentApi, Box<[#slice_elem]>>(self.argument_api(), #arg_index_expr, #arg_name_expr)
+                    elrond_wasm::load_single_arg::<Self::Api, Box<[#slice_elem]>>(self.raw_vm_api(), #arg_index_expr, #arg_name_expr)
                 }
             } else {
                 // deserialize as owned object, so we can then have a reference to it
@@ -26,20 +27,20 @@ pub fn generate_load_single_arg(
                         if *ident == "str" {
                             // TODO: generalize for all unsized types using Box
                             return quote! {
-                                elrond_wasm::load_single_arg::<Self::ArgumentApi, Box<str>>(self.argument_api(), #arg_index_expr, #arg_name_expr)
+                                elrond_wasm::load_single_arg::<Self::Api, Box<str>>(self.raw_vm_api(), #arg_index_expr, #arg_name_expr)
                             };
                         }
                     }
                 }
 
                 quote! {
-                    elrond_wasm::load_single_arg::<Self::ArgumentApi, #referenced_type>(self.argument_api(), #arg_index_expr, #arg_name_expr)
+                    elrond_wasm::load_single_arg::<Self::Api, #referenced_type>(self.raw_vm_api(), #arg_index_expr, #arg_name_expr)
                 }
             }
         },
         _ => {
             quote! {
-                elrond_wasm::load_single_arg::<Self::ArgumentApi, #arg_ty>(self.argument_api(), #arg_index_expr, #arg_name_expr)
+                elrond_wasm::load_single_arg::<Self::Api, #arg_ty>(self.raw_vm_api(), #arg_index_expr, #arg_name_expr)
             }
         },
     }
@@ -54,9 +55,10 @@ pub fn generate_load_dyn_arg(
     let arg_name_expr = arg_id_literal(pat);
     match &arg.ty {
         syn::Type::Reference(type_reference) => {
-            if type_reference.mutability.is_some() {
-                panic!("Mutable references not supported as contract method arguments");
-            }
+            assert!(
+                type_reference.mutability.is_none(),
+                "Mutable references not supported as contract method arguments"
+            );
             let referenced_type = &*type_reference.elem;
             quote! {
                 let #pat: & #referenced_type = &elrond_wasm::load_dyn_arg(#loader_expr, #arg_name_expr);

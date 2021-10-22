@@ -1,8 +1,5 @@
-use crate::abi::TypeAbi;
-use crate::types::BoxedBytes;
-use alloc::boxed::Box;
-use alloc::string::String;
-use alloc::vec::Vec;
+use crate::{abi::TypeAbi, types::BoxedBytes};
+use alloc::{boxed::Box, string::String, vec::Vec};
 use core::fmt::Debug;
 
 const ERR_BAD_H256_LENGTH: &[u8] = b"bad H256 length";
@@ -109,6 +106,11 @@ impl H256 {
     /// Extracts a byte slice containing the entire fixed hash.
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+
+    #[inline]
+    pub fn as_array(&self) -> &[u8; 32] {
         self.0.as_ref()
     }
 

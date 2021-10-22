@@ -1,9 +1,6 @@
 use syn::punctuated::Punctuated;
 
-use crate::{
-    generate::snippets,
-    model::{ModulePath, Supertrait},
-};
+use crate::model::{ModulePath, Supertrait};
 
 // TODO: would be nice to explicitly write `self::...` instead of no prefix.
 pub fn self_module_path() -> ModulePath {
@@ -50,13 +47,9 @@ pub fn proxy_supertrait_decl(supertraits: &[Supertrait]) -> Vec<proc_macro2::Tok
 
 fn impl_auto_impl(module_path: &ModulePath) -> proc_macro2::TokenStream {
     quote! {
-        impl<A> #module_path AutoImpl for ContractObj<A> where
-            A: elrond_wasm::api::ContractBase
-                + elrond_wasm::api::ErrorApi
-                + elrond_wasm::api::EndpointArgumentApi
-                + elrond_wasm::api::EndpointFinishApi
-                + Clone
-                + 'static
+        impl<A> #module_path AutoImpl for ContractObj<A>
+        where
+            A: elrond_wasm::api::VMApi + Clone + 'static,
         {
         }
     }
@@ -88,16 +81,10 @@ pub fn auto_impl_inheritance(supertraits: &[Supertrait]) -> Vec<proc_macro2::Tok
 }
 
 fn impl_endpoint_wrappers(module_path: &ModulePath) -> proc_macro2::TokenStream {
-    let where_self_big_int = snippets::where_self_big_int();
     quote! {
         impl<A> #module_path EndpointWrappers for ContractObj<A>
-        #where_self_big_int
-            A: elrond_wasm::api::ContractBase
-                + elrond_wasm::api::ErrorApi
-                + elrond_wasm::api::EndpointArgumentApi
-                + elrond_wasm::api::EndpointFinishApi
-                + Clone
-                + 'static,
+        where
+            A: elrond_wasm::api::VMApi + Clone + 'static,
         {
         }
     }
@@ -116,14 +103,13 @@ pub fn impl_all_endpoint_wrappers(supertraits: &[Supertrait]) -> Vec<proc_macro2
 
 #[allow(dead_code)]
 pub fn endpoint_wrappers_inheritance(supertraits: &[Supertrait]) -> Vec<proc_macro2::TokenStream> {
-    let where_self_big_int = snippets::where_self_big_int();
     supertraits
         .iter()
         .map(|supertrait| {
             let module_path = &supertrait.module_path;
             quote! {
                 impl<C> #module_path EndpointWrappers for C
-                #where_self_big_int
+                where
                     C: self::EndpointWrappers,
                 {
                 }
@@ -148,7 +134,7 @@ pub fn function_selector_module_calls(supertraits: &[Supertrait]) -> Vec<proc_ma
 
 fn impl_proxy_trait(module_path: &ModulePath) -> proc_macro2::TokenStream {
     quote! {
-        impl<SA> #module_path ProxyTrait for Proxy<SA> where SA: elrond_wasm::api::SendApi {}
+        impl<A> #module_path ProxyTrait for Proxy<A> where A: elrond_wasm::api::VMApi {}
     }
 }
 

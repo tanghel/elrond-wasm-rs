@@ -1,7 +1,6 @@
-use crate::codec_err::EncodeError;
-use crate::nested_ser::NestedEncode;
-use crate::top_ser_output::TopEncodeOutput;
-use crate::TypeInfo;
+use crate::{
+    codec_err::EncodeError, nested_ser::NestedEncode, top_ser_output::TopEncodeOutput, TypeInfo,
+};
 use alloc::vec::Vec;
 
 /// Most types will be encoded without any possibility of error.
@@ -47,9 +46,9 @@ where
     O: TopEncodeOutput,
     T: NestedEncode,
 {
-    let mut bytes = Vec::<u8>::new();
-    obj.dep_encode(&mut bytes)?;
-    output.set_slice_u8(&bytes[..]);
+    let mut nested_buffer = output.start_nested_encode();
+    obj.dep_encode(&mut nested_buffer)?;
+    output.finalize_nested_encode(nested_buffer);
     Ok(())
 }
 
@@ -63,12 +62,12 @@ pub fn top_encode_from_nested_or_exit<T, O, ExitCtx>(
     T: NestedEncode,
     ExitCtx: Clone,
 {
-    let mut bytes = Vec::<u8>::new();
-    obj.dep_encode_or_exit(&mut bytes, c, exit);
-    output.set_slice_u8(&bytes[..]);
+    let mut nested_buffer = output.start_nested_encode();
+    obj.dep_encode_or_exit(&mut nested_buffer, c, exit);
+    output.finalize_nested_encode(nested_buffer);
 }
 
-pub fn top_encode_to_vec<T: TopEncode>(obj: &T) -> Result<Vec<u8>, EncodeError> {
+pub fn top_encode_to_vec_u8<T: TopEncode>(obj: &T) -> Result<Vec<u8>, EncodeError> {
     let mut bytes = Vec::<u8>::new();
     obj.top_encode(&mut bytes)?;
     Ok(bytes)

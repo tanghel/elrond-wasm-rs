@@ -1,12 +1,9 @@
 elrond_wasm::imports!();
 elrond_wasm::derive_imports!();
 
-use crate::common::FEE_PENALTY_INCREASE_EPOCHS;
-use crate::common::FEE_PENALTY_INCREASE_PERCENT;
+use crate::common::{FEE_PENALTY_INCREASE_EPOCHS, FEE_PENALTY_INCREASE_PERCENT};
 
-use super::common;
-use super::events;
-use super::validation;
+use super::{common, events, validation};
 
 use super::common::{
     Order, OrderInputParams, OrderType, Payment, Transfer, FREE_ORDER_FROM_STORAGE_MIN_PENALTIES,
@@ -20,8 +17,8 @@ pub trait OrdersModule:
 {
     fn create_order(
         &self,
-        payment: Payment<Self::BigUint>,
-        params: OrderInputParams<Self::BigUint>,
+        payment: Payment<Self::Api>,
+        params: OrderInputParams<Self::Api>,
         order_type: OrderType,
     ) -> SCResult<()> {
         let caller = &self.blockchain().get_caller();
@@ -126,11 +123,11 @@ pub trait OrdersModule:
     fn free_order(
         &self,
         order_id: u64,
-        caller: &Address,
+        caller: &ManagedAddress,
         first_token_id: &TokenIdentifier,
         second_token_id: &TokenIdentifier,
         epoch: u64,
-    ) -> SCResult<Order<Self::BigUint>> {
+    ) -> SCResult<Order<Self::Api>> {
         let order = self.orders(order_id).get();
 
         let token_id = match &order.order_type {
@@ -146,8 +143,8 @@ pub trait OrdersModule:
 
         let penalty_percent = penalty_count * FEE_PENALTY_INCREASE_PERCENT;
         let penalty_amount = self.rule_of_three(
-            &penalty_percent.into(),
-            &PERCENT_BASE_POINTS.into(),
+            &self.types().big_uint_from(penalty_percent),
+            &self.types().big_uint_from(PERCENT_BASE_POINTS),
             &order.input_amount,
         );
         let amount = &order.input_amount - &penalty_amount;
@@ -176,11 +173,11 @@ pub trait OrdersModule:
     fn cancel_order(
         &self,
         order_id: u64,
-        caller: &Address,
+        caller: &ManagedAddress,
         first_token_id: &TokenIdentifier,
         second_token_id: &TokenIdentifier,
         epoch: u64,
-    ) -> SCResult<Order<Self::BigUint>> {
+    ) -> SCResult<Order<Self::Api>> {
         let order = self.orders(order_id).get();
 
         let token_id = match &order.order_type {
@@ -191,8 +188,8 @@ pub trait OrdersModule:
         let penalty_count = (epoch - order.create_epoch) / FEE_PENALTY_INCREASE_EPOCHS;
         let penalty_percent = penalty_count * FEE_PENALTY_INCREASE_PERCENT;
         let penalty_amount = self.rule_of_three(
-            &penalty_percent.into(),
-            &PERCENT_BASE_POINTS.into(),
+            &self.types().big_uint_from(penalty_percent),
+            &self.types().big_uint_from(PERCENT_BASE_POINTS),
             &order.input_amount,
         );
         let amount = &order.input_amount - &penalty_amount;
@@ -208,7 +205,7 @@ pub trait OrdersModule:
         Ok(order)
     }
 
-    fn load_orders(&self, order_ids: &[u64]) -> Vec<Order<Self::BigUint>> {
+    fn load_orders(&self, order_ids: &[u64]) -> Vec<Order<Self::Api>> {
         order_ids
             .iter()
             .filter(|&x| !self.orders(*x).is_empty())
@@ -216,10 +213,7 @@ pub trait OrdersModule:
             .collect()
     }
 
-    fn create_transfers(
-        &self,
-        orders: &[Order<Self::BigUint>],
-    ) -> SCResult<Vec<Transfer<Self::BigUint>>> {
+    fn create_transfers(&self, orders: &[Order<Self::Api>]) -> SCResult<Vec<Transfer<Self::Api>>> {
         let mut transfers = Vec::new();
         let first_token_id = self.first_token_id().get();
         let second_token_id = self.second_token_id().get();
@@ -262,9 +256,9 @@ pub trait OrdersModule:
 
     fn get_orders_with_type(
         &self,
-        orders: &[Order<Self::BigUint>],
+        orders: &[Order<Self::Api>],
         order_type: OrderType,
-    ) -> Vec<Order<Self::BigUint>> {
+    ) -> Vec<Order<Self::Api>> {
         orders
             .iter()
             .filter(|&x| x.order_type == order_type)
@@ -272,9 +266,9 @@ pub trait OrdersModule:
             .collect()
     }
 
-    fn get_orders_sum_up(&self, orders: &[Order<Self::BigUint>]) -> (Self::BigUint, Self::BigUint) {
-        let mut amount_paid = Self::BigUint::zero();
-        let mut amount_requested = Self::BigUint::zero();
+    fn get_orders_sum_up(&self, orders: &[Order<Self::Api>]) -> (BigUint, BigUint) {
+        let mut amount_paid = self.types().big_uint_zero();
+        let mut amount_requested = self.types().big_uint_zero();
 
         orders.iter().for_each(|x| {
             amount_paid += &x.input_amount;
@@ -286,18 +280,18 @@ pub trait OrdersModule:
 
     fn calculate_transfers(
         &self,
-        orders: Vec<Order<Self::BigUint>>,
-        total_paid: Self::BigUint,
+        orders: Vec<Order<Self::Api>>,
+        total_paid: BigUint,
         token_requested: TokenIdentifier,
-        leftover: Self::BigUint,
-    ) -> Vec<Transfer<Self::BigUint>> {
+        leftover: BigUint,
+    ) -> Vec<Transfer<Self::Api>> {
         let mut transfers = Vec::new();
 
         let mut match_provider_transfer = Transfer {
             to: self.blockchain().get_caller(),
             payment: Payment {
                 token_id: token_requested.clone(),
-                amount: Self::BigUint::zero(),
+                amount: self.types().big_uint_zero(),
             },
         };
 
@@ -308,8 +302,10 @@ pub trait OrdersModule:
 
             let order_deal = self.rule_of_three(&order.input_amount, &total_paid, &leftover);
             let match_provider_deal_amount = self.rule_of_three(
-                &order.deal_config.match_provider_percent.into(),
-                &PERCENT_BASE_POINTS.into(),
+                &self
+                    .types()
+                    .big_uint_from(order.deal_config.match_provider_percent),
+                &self.types().big_uint_from(PERCENT_BASE_POINTS),
                 &order_deal,
             );
             let creator_deal_amount = &order_deal - &match_provider_deal_amount;
@@ -330,7 +326,7 @@ pub trait OrdersModule:
         transfers
     }
 
-    fn execute_transfers(&self, transfers: Vec<Transfer<Self::BigUint>>) {
+    fn execute_transfers(&self, transfers: Vec<Transfer<Self::Api>>) {
         for transfer in transfers {
             if transfer.payment.amount > 0 {
                 self.send().direct(
@@ -355,7 +351,7 @@ pub trait OrdersModule:
     }
 
     #[view(getAddressOrderIds)]
-    fn get_address_order_ids(&self, address: &Address) -> MultiResultVec<u64> {
+    fn get_address_order_ids(&self, address: &ManagedAddress) -> MultiResultVec<u64> {
         MultiResultVec::from_iter(
             self.address_order_ids(address)
                 .get()
@@ -368,12 +364,12 @@ pub trait OrdersModule:
 
     #[view(getOrderIdCounter)]
     #[storage_mapper("order_id_counter")]
-    fn order_id_counter(&self) -> SingleValueMapper<Self::Storage, u64>;
+    fn order_id_counter(&self) -> SingleValueMapper<u64>;
 
     #[view(getOrderById)]
     #[storage_mapper("orders")]
-    fn orders(&self, id: u64) -> SingleValueMapper<Self::Storage, Order<Self::BigUint>>;
+    fn orders(&self, id: u64) -> SingleValueMapper<Order<Self::Api>>;
 
     #[storage_mapper("address_order_ids")]
-    fn address_order_ids(&self, address: &Address) -> SingleValueMapper<Self::Storage, Vec<u64>>;
+    fn address_order_ids(&self, address: &ManagedAddress) -> SingleValueMapper<Vec<u64>>;
 }

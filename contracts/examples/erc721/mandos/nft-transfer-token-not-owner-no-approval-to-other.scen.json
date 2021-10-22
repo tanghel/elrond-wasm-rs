@@ -9,9 +9,8 @@
             "step": "setState",
             "accounts": {
                 "address:acc1": {
-                    "nonce" : "0",
-                    "balance": "0",
-                    "storage": {}
+                    "nonce": "0",
+                    "balance": "0"
                 }
             }
         },
@@ -21,7 +20,6 @@
             "tx": {
                 "from": "address:acc1",
                 "to": "sc:the_nft_contract",
-                "value": "0",
                 "function": "transfer",
                 "arguments": [
                     "1",
@@ -31,6 +29,7 @@
                 "gasPrice": "0"
             },
             "expect": {
+                "out": [],
                 "status": "4",
                 "message": "str:Only the owner or the approved account may transfer the token!",
                 "gas": "*",
@@ -46,7 +45,7 @@
                     "storage": {}
                 },
                 "address:acc1": {
-                    "nonce" : "1",
+                    "nonce": "1",
                     "balance": "0",
                     "storage": {}
                 },
@@ -54,7 +53,6 @@
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
-                        
                         "str:totalMinted": "3",
                         "str:tokenCount|address:contract_owner": "3",
                         "str:tokenOwner|u64:0": "address:contract_owner",

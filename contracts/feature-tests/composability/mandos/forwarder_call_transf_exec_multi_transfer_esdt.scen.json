@@ -6,9 +6,7 @@
             "accounts": {
                 "address:a_user": {
                     "nonce": "0",
-                    "balance": "0",
-                    "storage": {},
-                    "code": ""
+                    "balance": "0"
                 },
                 "sc:forwarder": {
                     "nonce": "0",
@@ -32,13 +30,11 @@
                             ]
                         }
                     },
-                    "storage": {},
                     "code": "file:../forwarder/output/forwarder.wasm"
                 },
                 "sc:vault": {
                     "nonce": "0",
                     "balance": "0",
-                    "storage": {},
                     "code": "file:../vault/output/vault.wasm"
                 }
             }
@@ -50,8 +46,7 @@
             "tx": {
                 "from": "address:a_user",
                 "to": "sc:forwarder",
-                "value": "0",
-                "function": "send_esdt_direct_multi_transfer",
+                "function": "forward_transf_exec_accept_funds_multi_transfer",
                 "arguments": [
                     "sc:vault",
                     "str:FWD-TOKEN",
@@ -61,7 +56,7 @@
                     "0",
                     "200"
                 ],
-                "gasLimit": "80,000,000",
+                "gasLimit": "1,400,000,000",
                 "gasPrice": "0"
             },
             "expect": {
@@ -87,7 +82,9 @@
                     "esdt": {
                         "str:FWD-TOKEN": "300"
                     },
-                    "storage": {},
+                    "storage": {
+                        "str:call_counts|nested:str:accept_funds_multi_transfer": "1"
+                    },
                     "code": "file:../vault/output/vault.wasm"
                 },
                 "sc:forwarder": {
@@ -124,8 +121,7 @@
             "tx": {
                 "from": "address:a_user",
                 "to": "sc:forwarder",
-                "value": "0",
-                "function": "send_esdt_direct_multi_transfer",
+                "function": "forward_transf_exec_accept_funds_multi_transfer",
                 "arguments": [
                     "sc:vault",
                     "str:FWD-TOKEN",
@@ -138,7 +134,7 @@
                     "3",
                     "6"
                 ],
-                "gasLimit": "80,000,000",
+                "gasLimit": "1,400,000,000",
                 "gasPrice": "0"
             },
             "expect": {
@@ -180,7 +176,9 @@
                             ]
                         }
                     },
-                    "storage": {},
+                    "storage": {
+                        "str:call_counts|nested:str:accept_funds_multi_transfer": "2"
+                    },
                     "code": "file:../vault/output/vault.wasm"
                 },
                 "sc:forwarder": {

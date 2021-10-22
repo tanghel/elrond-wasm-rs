@@ -1,14 +1,12 @@
 use super::generate::{abi_gen, snippets};
-use crate::generate::callback_gen::*;
-use crate::generate::callback_proxies_gen::*;
-use crate::generate::contract_gen::*;
-use crate::generate::function_selector::generate_function_selector_body;
-use crate::generate::proxy_gen;
-use crate::generate::supertrait_gen;
-use crate::generate::{
-    auto_impl::generate_auto_impls, auto_impl_proxy::generate_all_proxy_trait_imports,
+use crate::{
+    generate::{
+        auto_impl::generate_auto_impls, auto_impl_proxy::generate_all_proxy_trait_imports,
+        callback_gen::*, callback_proxies_gen::*, contract_gen::*,
+        function_selector::generate_function_selector_body, proxy_gen, supertrait_gen,
+    },
+    model::ContractTrait,
 };
-use crate::model::ContractTrait;
 
 /// Provides the implementation for both modules and contracts.
 /// TODO: not a great pattern to have the `is_contract_main` flag, reorganize the code and get rid of it.
@@ -26,7 +24,6 @@ pub fn contract_implementation(
     let endpoints = generate_wasm_endpoints(contract);
     let function_selector_body = generate_function_selector_body(contract);
     let (callback_selector_body, callback_body) = generate_callback_selector_and_main(contract);
-    let where_self_big_int = snippets::where_self_big_int();
 
     let (callbacks_def, callbacks_impl, callback_proxies_obj) = generate_callback_proxies(contract);
 
@@ -37,10 +34,10 @@ pub fn contract_implementation(
 
         #(#module_original_attributes)*
         pub trait #trait_name_ident:
-        elrond_wasm::api::ContractBase
+        elrond_wasm::contract_base::ContractBase
         + Sized
         #(#supertraits_main)*
-        #where_self_big_int
+        where
         {
             #(#method_impls)*
 
@@ -51,10 +48,10 @@ pub fn contract_implementation(
     };
 
     let auto_impl_trait = quote! {
-        pub trait AutoImpl: elrond_wasm::api::ContractBase {}
+        pub trait AutoImpl: elrond_wasm::contract_base::ContractBase {}
 
         impl<C> #trait_name_ident for C
-        #where_self_big_int
+        where
         C: AutoImpl #(#supertraits_main)*
         {
             #(#auto_impls)*
@@ -67,10 +64,9 @@ pub fn contract_implementation(
         supertrait_gen::endpoint_wrapper_supertrait_decl(contract.supertraits.as_slice());
     let endpoint_wrappers = quote! {
         pub trait EndpointWrappers:
-            elrond_wasm::api::ContractPrivateApi
+            elrond_wasm::contract_base::ContractBase
             + #trait_name_ident
             #(#endpoint_wrapper_supertrait_decl)*
-        #where_self_big_int
         {
             #(#call_methods)*
 
@@ -78,7 +74,7 @@ pub fn contract_implementation(
                 #function_selector_body
             }
 
-            fn callback_selector<'a>(&self, mut ___cb_data_deserializer___: elrond_wasm::hex_call_data::HexCallDataDeserializer<'a>) -> elrond_wasm::types::CallbackSelectorResult<'a> {
+            fn callback_selector(&self, mut ___cb_closure___: elrond_wasm::types::CallbackClosureForDeser<Self::Api>) -> elrond_wasm::types::CallbackSelectorResult<Self::Api> {
                 #callback_selector_body
             }
 
@@ -103,7 +99,6 @@ pub fn contract_implementation(
     let contract_object_def = snippets::contract_object_def();
     let impl_contract_base = snippets::impl_contract_base();
     let impl_all_auto_impl = supertrait_gen::impl_all_auto_impl(contract.supertraits.as_slice());
-    let impl_private_api = snippets::impl_private_api();
     let impl_all_endpoint_wrappers =
         supertrait_gen::impl_all_endpoint_wrappers(contract.supertraits.as_slice());
     let impl_callable_contract = snippets::impl_callable_contract();
@@ -116,8 +111,6 @@ pub fn contract_implementation(
         #impl_contract_base
 
         #(#impl_all_auto_impl)*
-
-        #impl_private_api
 
         #(#impl_all_endpoint_wrappers)*
 

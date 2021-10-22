@@ -11,8 +11,7 @@
             "accounts": {
                 "address:creator": {
                     "nonce": "0",
-                    "balance": "0",
-                    "storage": {}
+                    "balance": "0"
                 }
             }
         },
@@ -22,7 +21,6 @@
             "tx": {
                 "from": "address:creator",
                 "to": "sc:erc1155",
-                "value": "0",
                 "function": "createToken",
                 "arguments": [
                     "str:https://token-cdn-domain/{id}.json",
@@ -33,7 +31,9 @@
                 "gasPrice": "0x00"
             },
             "expect": {
-                "out": ["1"],
+                "out": [
+                    "1"
+                ],
                 "status": "0",
                 "message": "",
                 "logs": [],
@@ -62,9 +62,7 @@
                         "str:isFungible|biguint:1": "true",
                         "str:tokenTypeUri|biguint:1": "str:https://token-cdn-domain/{id}.json",
                         "str:balanceOf|address:creator|str:.mapped|biguint:1": "1000",
-                        
                         "str:lastValidTypeId": "1",
-
                         "str:balanceOf|address:creator|str:.node_links|u32:1": "u32:0|u32:0",
                         "str:balanceOf|address:creator|str:.value|u32:1": "1",
                         "str:balanceOf|address:creator|str:.node_id|biguint:1": "1",

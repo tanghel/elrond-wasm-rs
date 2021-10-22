@@ -8,8 +8,8 @@ pub trait SimpleErc20Token {
 
     /// Total number of tokens in existence.
     #[view(totalSupply)]
-    #[storage_mapper("total_supply")]
-    fn total_supply(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    #[storage_mapper("totalSupply")]
+    fn total_supply(&self) -> SingleValueMapper<BigUint>;
 
     /// Gets the balance of the specified address.
     ///
@@ -19,7 +19,7 @@ pub trait SimpleErc20Token {
     ///
     #[view(balanceOf)]
     #[storage_mapper("balance")]
-    fn token_balance(&self, address: &Address) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn token_balance(&self, address: &ManagedAddress) -> SingleValueMapper<BigUint>;
 
     /// The amount of tokens that an owner allowed to a spender.
     ///
@@ -32,16 +32,16 @@ pub trait SimpleErc20Token {
     #[storage_mapper("allowance")]
     fn allowance(
         &self,
-        owner: &Address,
-        spender: &Address,
-    ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+        owner: &ManagedAddress,
+        spender: &ManagedAddress,
+    ) -> SingleValueMapper<BigUint>;
 
     // FUNCTIONALITY
 
     /// Constructor, is called immediately after the contract is created
     /// Will set the fixed global token supply and give all the supply to the creator.
     #[init]
-    fn init(&self, total_supply: &Self::BigUint) {
+    fn init(&self, total_supply: &BigUint) {
         let creator = self.blockchain().get_caller();
 
         // save total supply
@@ -55,13 +55,13 @@ pub trait SimpleErc20Token {
     /// This method is private, deduplicates logic from transfer and transferFrom.
     fn perform_transfer(
         &self,
-        sender: Address,
-        recipient: Address,
-        amount: Self::BigUint,
+        sender: ManagedAddress,
+        recipient: ManagedAddress,
+        amount: BigUint,
     ) -> SCResult<()> {
         // check if enough funds & decrease sender balance
         self.token_balance(&sender).update(|balance| {
-            require!(amount <= *balance, "insufficient funds");
+            require!(amount <= *balance, &b"insufficient funds"[..]);
 
             *balance -= &amount;
 
@@ -85,7 +85,7 @@ pub trait SimpleErc20Token {
     /// * `to` The address to transfer to.
     ///
     #[endpoint]
-    fn transfer(&self, to: Address, amount: Self::BigUint) -> SCResult<()> {
+    fn transfer(&self, to: ManagedAddress, amount: BigUint) -> SCResult<()> {
         // the sender is the caller
         let sender = self.blockchain().get_caller();
         self.perform_transfer(sender, to, amount)
@@ -102,15 +102,15 @@ pub trait SimpleErc20Token {
     #[endpoint(transferFrom)]
     fn transfer_from(
         &self,
-        sender: Address,
-        recipient: Address,
-        amount: Self::BigUint,
+        sender: ManagedAddress,
+        recipient: ManagedAddress,
+        amount: BigUint,
     ) -> SCResult<()> {
         // get caller
         let caller = self.blockchain().get_caller();
 
         self.allowance(&sender, &caller).update(|allowance| {
-            require!(amount <= *allowance, "allowance exceeded");
+            require!(amount <= *allowance, &b"allowance exceeded"[..]);
 
             *allowance -= &amount;
 
@@ -130,7 +130,7 @@ pub trait SimpleErc20Token {
     /// * `amount` The amount of tokens to be spent.
     ///
     #[endpoint]
-    fn approve(&self, spender: Address, amount: Self::BigUint) -> SCResult<()> {
+    fn approve(&self, spender: ManagedAddress, amount: BigUint) -> SCResult<()> {
         // sender is the caller
         let caller = self.blockchain().get_caller();
 
@@ -147,16 +147,16 @@ pub trait SimpleErc20Token {
     #[event("transfer")]
     fn transfer_event(
         &self,
-        #[indexed] sender: &Address,
-        #[indexed] recipient: &Address,
-        amount: &Self::BigUint,
+        #[indexed] sender: &ManagedAddress,
+        #[indexed] recipient: &ManagedAddress,
+        amount: &BigUint,
     );
 
     #[event("approve")]
     fn approve_event(
         &self,
-        #[indexed] sender: &Address,
-        #[indexed] recipient: &Address,
-        amount: &Self::BigUint,
+        #[indexed] sender: &ManagedAddress,
+        #[indexed] recipient: &ManagedAddress,
+        amount: &BigUint,
     );
 }

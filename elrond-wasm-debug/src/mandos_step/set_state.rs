@@ -1,8 +1,12 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
-use mandos::{Account, AddressKey, BlockInfo, NewAddress};
+use mandos::model::{Account, AddressKey, BlockInfo, NewAddress};
+use num_bigint::BigUint;
 
-use crate::{AccountData, BlockInfo as CrateBlockInfo, BlockchainMock};
+use crate::world_mock::{
+    is_smart_contract_address, AccountData, AccountEsdt, BlockInfo as CrateBlockInfo,
+    BlockchainMock, EsdtData, EsdtInstance, EsdtInstances, EsdtRoles,
+};
 
 pub fn execute(
     state: &mut BlockchainMock,
@@ -17,18 +21,31 @@ pub fn execute(
             .iter()
             .map(|(k, v)| (k.value.clone(), v.value.clone()))
             .collect();
-        let esdt = if let Some(esdt_map) = &account.esdt {
-            esdt_map
+        let esdt = AccountEsdt::new_from_hash(
+            account
+                .esdt
                 .iter()
-                .map(|(k, v)| (k.value.clone(), v.value.clone()))
-                .collect()
-        } else {
-            HashMap::new()
-        };
-        state.add_account(AccountData {
+                .map(|(k, v)| {
+                    (
+                        k.value.clone(),
+                        convert_mandos_esdt_to_world_mock(k.value.as_slice(), v),
+                    )
+                })
+                .collect(),
+        );
+
+        state.validate_and_add_account(AccountData {
             address: address.value.into(),
-            nonce: account.nonce.value,
-            balance: account.balance.value.clone(),
+            nonce: account
+                .nonce
+                .as_ref()
+                .map(|nonce| nonce.value)
+                .unwrap_or_default(),
+            egld_balance: account
+                .balance
+                .as_ref()
+                .map(|balance| balance.value.clone())
+                .unwrap_or_default(),
             esdt,
             username: account
                 .username
@@ -47,6 +64,10 @@ pub fn execute(
         });
     }
     for new_address in new_addresses.iter() {
+        assert!(
+            is_smart_contract_address(&new_address.new_address.value.into()),
+            "field should have SC format"
+        );
         state.put_new_address(
             new_address.creator_address.value.into(),
             new_address.creator_nonce.value,
@@ -61,7 +82,95 @@ pub fn execute(
     }
 }
 
-fn update_block_info(block_info: &mut CrateBlockInfo, mandos_block_info: &mandos::BlockInfo) {
+fn convert_mandos_esdt_to_world_mock(
+    token_identifier: &[u8],
+    mandos_esdt: &mandos::model::Esdt,
+) -> EsdtData {
+    match mandos_esdt {
+        mandos::model::Esdt::Short(short_esdt) => {
+            let balance = BigUint::from_bytes_be(short_esdt.value.as_slice());
+            let mut esdt_data = EsdtData {
+                token_identifier: token_identifier.to_vec(),
+                ..Default::default()
+            };
+            esdt_data.instances.add(0, balance);
+            esdt_data
+        },
+        mandos::model::Esdt::Full(full_esdt) => EsdtData {
+            token_identifier: full_esdt
+                .token_identifier
+                .as_ref()
+                .map(|token_identifier| token_identifier.value.clone())
+                .unwrap_or_default(),
+            instances: EsdtInstances::new_from_hash(
+                full_esdt
+                    .instances
+                    .iter()
+                    .map(|mandos_instance| {
+                        let mock_instance =
+                            convert_mandos_esdt_instance_to_world_mock(mandos_instance);
+                        (mock_instance.nonce, mock_instance)
+                    })
+                    .collect(),
+            ),
+            last_nonce: full_esdt
+                .last_nonce
+                .as_ref()
+                .map(|last_nonce| last_nonce.value)
+                .unwrap_or_default(),
+            roles: EsdtRoles::new(
+                full_esdt
+                    .roles
+                    .iter()
+                    .map(|role| role.value.clone())
+                    .collect(),
+            ),
+            frozen: if let Some(u64_value) = &full_esdt.frozen {
+                u64_value.value > 0
+            } else {
+                false
+            },
+        },
+    }
+}
+
+fn convert_mandos_esdt_instance_to_world_mock(
+    mandos_esdt: &mandos::model::Instance,
+) -> EsdtInstance {
+    EsdtInstance {
+        nonce: mandos_esdt
+            .nonce
+            .as_ref()
+            .map(|nonce| nonce.value)
+            .unwrap_or_default(),
+        balance: mandos_esdt
+            .balance
+            .as_ref()
+            .map(|value| value.value.clone())
+            .unwrap_or_default(),
+        creator: mandos_esdt
+            .creator
+            .as_ref()
+            .map(|creator| creator.value.clone()),
+        royalties: mandos_esdt
+            .royalties
+            .as_ref()
+            .map(|royalties| royalties.value)
+            .unwrap_or_default(),
+        hash: mandos_esdt.hash.as_ref().map(|hash| hash.value.clone()),
+        uri: mandos_esdt.uri.as_ref().map(|uri| uri.value.clone()),
+        attributes: mandos_esdt
+            .attributes
+            .as_ref()
+            .map(|attributes| attributes.value.clone())
+            .unwrap_or_default(),
+    }
+}
+
+fn update_block_info(
+    block_info: &mut CrateBlockInfo,
+    mandos_block_info: &mandos::model::BlockInfo,
+) {
     if let Some(u64_value) = &mandos_block_info.block_timestamp {
         block_info.block_timestamp = u64_value.value;
     }

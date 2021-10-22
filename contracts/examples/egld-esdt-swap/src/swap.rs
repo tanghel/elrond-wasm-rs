@@ -20,11 +20,11 @@ pub trait EgldEsdtSwap {
     #[endpoint(issueWrappedEgld)]
     fn issue_wrapped_egld(
         &self,
-        token_display_name: BoxedBytes,
-        token_ticker: BoxedBytes,
-        initial_supply: Self::BigUint,
-        #[payment] issue_cost: Self::BigUint,
-    ) -> SCResult<AsyncCall<Self::SendApi>> {
+        token_display_name: ManagedBuffer,
+        token_ticker: ManagedBuffer,
+        initial_supply: BigUint,
+        #[payment] issue_cost: BigUint,
+    ) -> SCResult<AsyncCall> {
         require!(
             self.wrapped_egld_token_id().is_empty(),
             "wrapped egld was already issued"
@@ -32,9 +32,11 @@ pub trait EgldEsdtSwap {
 
         let caller = self.blockchain().get_caller();
 
-        self.issue_started_event(&caller, token_ticker.as_slice(), &initial_supply);
+        self.issue_started_event(&caller, &token_ticker, &initial_supply);
 
-        Ok(ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
+        Ok(self
+            .send()
+            .esdt_system_sc_proxy()
             .issue_fungible(
                 issue_cost,
                 &token_display_name,
@@ -59,21 +61,21 @@ pub trait EgldEsdtSwap {
     #[callback]
     fn esdt_issue_callback(
         &self,
-        caller: &Address,
+        caller: &ManagedAddress,
         #[payment_token] token_identifier: TokenIdentifier,
-        #[payment] returned_tokens: Self::BigUint,
-        #[call_result] result: AsyncCallResult<()>,
+        #[payment] returned_tokens: BigUint,
+        #[call_result] result: ManagedAsyncCallResult<()>,
     ) {
         // callback is called with ESDTTransfer of the newly issued token, with the amount requested,
         // so we can get the token identifier and amount from the call data
         match result {
-            AsyncCallResult::Ok(()) => {
+            ManagedAsyncCallResult::Ok(()) => {
                 self.issue_success_event(caller, &token_identifier, &returned_tokens);
                 self.unused_wrapped_egld().set(&returned_tokens);
                 self.wrapped_egld_token_id().set(&token_identifier);
             },
-            AsyncCallResult::Err(message) => {
-                self.issue_failure_event(caller, message.err_msg.as_slice());
+            ManagedAsyncCallResult::Err(message) => {
+                self.issue_failure_event(caller, &message.err_msg);
 
                 // return issue cost to the owner
                 // TODO: test that it works
@@ -86,7 +88,7 @@ pub trait EgldEsdtSwap {
 
     #[only_owner]
     #[endpoint(mintWrappedEgld)]
-    fn mint_wrapped_egld(&self, amount: Self::BigUint) -> SCResult<AsyncCall<Self::SendApi>> {
+    fn mint_wrapped_egld(&self, amount: BigUint) -> SCResult<AsyncCall> {
         require!(
             !self.wrapped_egld_token_id().is_empty(),
             "Wrapped EGLD was not issued yet"
@@ -96,7 +98,9 @@ pub trait EgldEsdtSwap {
         let caller = self.blockchain().get_caller();
         self.mint_started_event(&caller, &amount);
 
-        Ok(ESDTSystemSmartContractProxy::new_proxy_obj(self.send())
+        Ok(self
+            .send()
+            .esdt_system_sc_proxy()
             .mint(&wrapped_egld_token_id, &amount)
             .async_call()
             .with_callback(self.callbacks().esdt_mint_callback(&caller, &amount)))
@@ -105,18 +109,18 @@ pub trait EgldEsdtSwap {
     #[callback]
     fn esdt_mint_callback(
         &self,
-        caller: &Address,
-        amount: &Self::BigUint,
-        #[call_result] result: AsyncCallResult<()>,
+        caller: &ManagedAddress,
+        amount: &BigUint,
+        #[call_result] result: ManagedAsyncCallResult<()>,
     ) {
         match result {
-            AsyncCallResult::Ok(()) => {
+            ManagedAsyncCallResult::Ok(()) => {
                 self.mint_success_event(caller);
                 self.unused_wrapped_egld()
                     .update(|unused_wrapped_egld| *unused_wrapped_egld += amount);
             },
-            AsyncCallResult::Err(message) => {
-                self.mint_failure_event(caller, message.err_msg.as_slice());
+            ManagedAsyncCallResult::Err(message) => {
+                self.mint_failure_event(caller, &message.err_msg);
             },
         }
     }
@@ -125,7 +129,7 @@ pub trait EgldEsdtSwap {
 
     #[payable("EGLD")]
     #[endpoint(wrapEgld)]
-    fn wrap_egld(&self, #[payment] payment: Self::BigUint) -> SCResult<()> {
+    fn wrap_egld(&self, #[payment] payment: BigUint) -> SCResult<()> {
         require!(payment > 0, "Payment must be more than 0");
         require!(
             !self.wrapped_egld_token_id().is_empty(),
@@ -161,7 +165,7 @@ pub trait EgldEsdtSwap {
     #[endpoint(unwrapEgld)]
     fn unwrap_egld(
         &self,
-        #[payment] wrapped_egld_payment: Self::BigUint,
+        #[payment] wrapped_egld_payment: BigUint,
         #[payment_token] token_identifier: TokenIdentifier,
     ) -> SCResult<()> {
         require!(
@@ -181,7 +185,7 @@ pub trait EgldEsdtSwap {
             wrapped_egld_payment
                 <= self
                     .blockchain()
-                    .get_sc_balance(&TokenIdentifier::egld(), 0),
+                    .get_sc_balance(&self.types().token_identifier_egld(), 0),
             "Contract does not have enough funds"
         );
 
@@ -199,54 +203,54 @@ pub trait EgldEsdtSwap {
     }
 
     #[view(getLockedEgldBalance)]
-    fn get_locked_egld_balance(&self) -> Self::BigUint {
+    fn get_locked_egld_balance(&self) -> BigUint {
         self.blockchain()
-            .get_sc_balance(&TokenIdentifier::egld(), 0)
+            .get_sc_balance(&self.types().token_identifier_egld(), 0)
     }
 
     // storage
 
     #[view(getWrappedEgldTokenIdentifier)]
     #[storage_mapper("wrapped_egld_token_id")]
-    fn wrapped_egld_token_id(&self) -> SingleValueMapper<Self::Storage, TokenIdentifier>;
+    fn wrapped_egld_token_id(&self) -> SingleValueMapper<TokenIdentifier>;
 
     #[view(getUnusedWrappedEgld)]
     #[storage_mapper("unused_wrapped_egld")]
-    fn unused_wrapped_egld(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn unused_wrapped_egld(&self) -> SingleValueMapper<BigUint>;
 
     // events
 
     #[event("issue-started")]
     fn issue_started_event(
         &self,
-        #[indexed] caller: &Address,
-        #[indexed] token_ticker: &[u8],
-        initial_supply: &Self::BigUint,
+        #[indexed] caller: &ManagedAddress,
+        #[indexed] token_ticker: &ManagedBuffer,
+        initial_supply: &BigUint,
     );
 
     #[event("issue-success")]
     fn issue_success_event(
         &self,
-        #[indexed] caller: &Address,
+        #[indexed] caller: &ManagedAddress,
         #[indexed] token_identifier: &TokenIdentifier,
-        initial_supply: &Self::BigUint,
+        initial_supply: &BigUint,
     );
 
     #[event("issue-failure")]
-    fn issue_failure_event(&self, #[indexed] caller: &Address, message: &[u8]);
+    fn issue_failure_event(&self, #[indexed] caller: &ManagedAddress, message: &ManagedBuffer);
 
     #[event("mint-started")]
-    fn mint_started_event(&self, #[indexed] caller: &Address, amount: &Self::BigUint);
+    fn mint_started_event(&self, #[indexed] caller: &ManagedAddress, amount: &BigUint);
 
     #[event("mint-success")]
-    fn mint_success_event(&self, #[indexed] caller: &Address);
+    fn mint_success_event(&self, #[indexed] caller: &ManagedAddress);
 
     #[event("mint-failure")]
-    fn mint_failure_event(&self, #[indexed] caller: &Address, message: &[u8]);
+    fn mint_failure_event(&self, #[indexed] caller: &ManagedAddress, message: &ManagedBuffer);
 
     #[event("wrap-egld")]
-    fn wrap_egld_event(&self, #[indexed] user: &Address, amount: &Self::BigUint);
+    fn wrap_egld_event(&self, #[indexed] user: &ManagedAddress, amount: &BigUint);
 
     #[event("unwrap-egld")]
-    fn unwrap_egld_event(&self, #[indexed] user: &Address, amount: &Self::BigUint);
+    fn unwrap_egld_event(&self, #[indexed] user: &ManagedAddress, amount: &BigUint);
 }

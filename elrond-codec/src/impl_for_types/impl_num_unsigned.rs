@@ -1,8 +1,8 @@
-use crate::num_conv::bytes_to_number;
 use crate::{
-    dep_encode_from_no_err, dep_encode_num_mimic, top_encode_from_no_err, top_ser::TopEncodeNoErr,
-    DecodeError, EncodeError, NestedDecode, NestedDecodeInput, NestedEncode, NestedEncodeNoErr,
-    NestedEncodeOutput, TopDecode, TopDecodeInput, TopEncode, TopEncodeOutput, TypeInfo,
+    dep_encode_from_no_err, dep_encode_num_mimic, num_conv::bytes_to_number,
+    top_encode_from_no_err, top_ser::TopEncodeNoErr, DecodeError, EncodeError, NestedDecode,
+    NestedDecodeInput, NestedEncode, NestedEncodeNoErr, NestedEncodeOutput, TopDecode,
+    TopDecodeInput, TopEncode, TopEncodeOutput, TypeInfo,
 };
 
 // No reversing needed for u8, because it is a single byte.
@@ -73,8 +73,9 @@ macro_rules! dep_decode_num_unsigned {
             const TYPE_INFO: TypeInfo = $type_info;
 
             fn dep_decode<I: NestedDecodeInput>(input: &mut I) -> Result<Self, DecodeError> {
-                let bytes = input.read_slice($num_bytes)?;
-                let num = bytes_to_number(bytes, false) as $ty;
+                let mut bytes = [0u8; $num_bytes];
+                input.read_into(&mut bytes[..])?;
+                let num = bytes_to_number(&bytes[..], false) as $ty;
                 Ok(num)
             }
 
@@ -83,8 +84,9 @@ macro_rules! dep_decode_num_unsigned {
                 c: ExitCtx,
                 exit: fn(ExitCtx, DecodeError) -> !,
             ) -> Self {
-                let bytes = input.read_slice_or_exit($num_bytes, c, exit);
-                let num = bytes_to_number(bytes, false) as $ty;
+                let mut bytes = [0u8; $num_bytes];
+                input.read_into_or_exit(&mut bytes[..], c, exit);
+                let num = bytes_to_number(&bytes[..], false) as $ty;
                 num
             }
         }

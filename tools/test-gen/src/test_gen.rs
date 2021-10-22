@@ -1,6 +1,4 @@
-use std::fs::File;
-use std::io::Write;
-use std::{env, fs};
+use std::{env, fs, fs::File, io::Write};
 
 fn split_file_name(name: String, separator: &str) -> Vec<String> {
     let splitted_name = name.split(separator);
@@ -39,7 +37,7 @@ fn print_mandos_rs(file: &mut File, names: &[String]) {
             file,
             "#[test]
 fn {}_rs() {{
-    elrond_wasm_debug::mandos_rs(\"mandos/{}.scen.json\", &contract_map());
+    elrond_wasm_debug::mandos_rs(\"mandos/{}.scen.json\", contract_map());
 }}
 ",
             name.replace('-', "_").to_lowercase(),
@@ -65,8 +63,9 @@ fn {}_go() {{
     }
 }
 
-/// Example run:
+/// Examples how to run:
 /// `cargo run ../../contracts/examples/erc20/mandos`
+/// `cargo run ../../contracts/feature-tests/basic-features/mandos`
 fn main() {
     let args: Vec<String> = env::args().collect();
     let files_path = &args[1];

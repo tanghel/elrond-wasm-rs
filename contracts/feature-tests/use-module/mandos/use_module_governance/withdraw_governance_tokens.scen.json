@@ -11,7 +11,6 @@
             "tx": {
                 "from": "address:user1",
                 "to": "sc:governance",
-                "value": "0",
                 "function": "withdrawGovernanceTokens",
                 "arguments": [
                     "1"
@@ -23,8 +22,8 @@
                 "out": [],
                 "status": "0",
                 "message": "",
-                "refund": "*",
-                "gas": "*"
+                "gas": "*",
+                "refund": "*"
             }
         },
         {
@@ -33,7 +32,6 @@
             "tx": {
                 "from": "address:user2",
                 "to": "sc:governance",
-                "value": "0",
                 "function": "withdrawGovernanceTokens",
                 "arguments": [
                     "1"
@@ -45,8 +43,8 @@
                 "out": [],
                 "status": "0",
                 "message": "",
-                "refund": "*",
-                "gas": "*"
+                "gas": "*",
+                "refund": "*"
             }
         },
         {
@@ -55,7 +53,6 @@
             "tx": {
                 "from": "address:owner",
                 "to": "sc:governance",
-                "value": "0",
                 "function": "withdrawGovernanceTokens",
                 "arguments": [
                     "1"
@@ -67,8 +64,8 @@
                 "out": [],
                 "status": "0",
                 "message": "",
-                "refund": "*",
-                "gas": "*"
+                "gas": "*",
+                "refund": "*"
             }
         },
         {
@@ -108,19 +105,16 @@
                         "str:governance:votes|u32:1|str:.mapped|address:user1": "",
                         "str:governance:votes|u32:1|str:.mapped|address:user2": "",
                         "str:governance:downvotes|u32:1|str:.mapped|address:owner": "",
-
                         "str:governance:proposalStartBlock|u32:1": "",
                         "str:governance:totalVotes|u32:1": "",
                         "str:governance:totalDownvotes|u32:1": "",
                         "str:governance:proposals.item|u32:1": "",
-
                         "str:governance:quorum": "1000",
-
-                        "+": {}
+                        "+": ""
                     },
                     "code": "*"
                 },
-                "+": {}
+                "+": ""
             }
         }
     ]

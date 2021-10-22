@@ -1,13 +1,15 @@
-use crate::codec_err::{DecodeError, EncodeError};
-use crate::nested_de::NestedDecode;
-use crate::nested_de_input::NestedDecodeInput;
-use crate::nested_ser::NestedEncode;
-use crate::nested_ser_output::NestedEncodeOutput;
-use crate::top_de::{top_decode_from_nested, top_decode_from_nested_or_exit, TopDecode};
-use crate::top_de_input::TopDecodeInput;
-use crate::top_ser::TopEncode;
-use crate::top_ser_output::TopEncodeOutput;
-use alloc::vec::Vec;
+use crate::{
+    codec_err::{DecodeError, EncodeError},
+    nested_de::NestedDecode,
+    nested_de_input::NestedDecodeInput,
+    nested_ser::NestedEncode,
+    nested_ser_output::NestedEncodeOutput,
+    top_de::{top_decode_from_nested, top_decode_from_nested_or_exit, TopDecode},
+    top_de_input::TopDecodeInput,
+    top_ser::TopEncode,
+    top_ser_output::TopEncodeOutput,
+};
+
 macro_rules! tuple_impls {
     ($(($($n:tt $name:ident)+))+) => {
         $(
@@ -16,20 +18,20 @@ macro_rules! tuple_impls {
                 $($name: NestedEncode,)+
             {
 				fn top_encode<O: TopEncodeOutput>(&self, output: O) -> Result<(), EncodeError> {
-					let mut buffer = Vec::<u8>::new();
+					let mut buffer = output.start_nested_encode();
 					$(
                         self.$n.dep_encode(&mut buffer)?;
                     )+
-					output.set_slice_u8(&buffer[..]);
+					output.finalize_nested_encode(buffer);
 					Ok(())
 				}
 
 				fn top_encode_or_exit<O: TopEncodeOutput, ExitCtx: Clone>(&self, output: O, c: ExitCtx, exit: fn(ExitCtx, EncodeError) -> !) {
-					let mut buffer = Vec::<u8>::new();
+					let mut buffer = output.start_nested_encode();
 					$(
                         self.$n.dep_encode_or_exit(&mut buffer, c.clone(), exit);
                     )+
-					output.set_slice_u8(&buffer[..]);
+					output.finalize_nested_encode(buffer);
 				}
             }
             impl<$($name),+> TopDecode for ($($name,)+)

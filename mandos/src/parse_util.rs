@@ -1,10 +1,10 @@
-use super::context::*;
-use super::scenario::*;
-use super::scenario_raw::*;
-use super::value::InterpretableFrom;
+use crate::{
+    interpret_trait::{InterpretableFrom, InterpreterContext},
+    model::Scenario,
+    serde_raw::ScenarioRaw,
+};
 
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
 
 pub fn parse_scenario_raw<P: AsRef<Path>>(path: P) -> ScenarioRaw {
     let contents = fs::read_to_string(path.as_ref())

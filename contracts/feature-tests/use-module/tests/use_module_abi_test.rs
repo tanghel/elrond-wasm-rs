@@ -1,8 +1,6 @@
 use elrond_wasm_debug::*;
 
-use std::fs;
-use std::fs::File;
-use std::io::Write;
+use std::{fs, fs::File, io::Write};
 
 #[test]
 fn use_module_abi_generated_ok() {
@@ -10,7 +8,7 @@ fn use_module_abi_generated_ok() {
     let expected_abi_json = fs::read_to_string("./use_module_expected.abi.json").unwrap();
 
     // generate ABI
-    let contract_abi_json = abi_json::contract_abi::<use_module::AbiProvider>();
+    let contract_abi_json = abi_json::contract_abi_dummy_environment::<use_module::AbiProvider>();
 
     // save generated ABI to disk for easier comparison in case something is off
     let mut file = File::create("use_module_generated.abi.json").unwrap();

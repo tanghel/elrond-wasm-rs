@@ -11,9 +11,9 @@ pub trait KittyOwnership {
     #[init]
     fn init(
         &self,
-        birth_fee: Self::BigUint,
-        #[var_args] opt_gene_science_contract_address: OptionalArg<Address>,
-        #[var_args] opt_kitty_auction_contract_address: OptionalArg<Address>,
+        birth_fee: BigUint,
+        #[var_args] opt_gene_science_contract_address: OptionalArg<ManagedAddress>,
+        #[var_args] opt_kitty_auction_contract_address: OptionalArg<ManagedAddress>,
     ) {
         self.set_birth_fee(birth_fee);
 
@@ -34,7 +34,7 @@ pub trait KittyOwnership {
 
     #[only_owner]
     #[endpoint(setGeneScienceContractAddress)]
-    fn set_gene_science_contract_address_endpoint(&self, address: Address) -> SCResult<()> {
+    fn set_gene_science_contract_address_endpoint(&self, address: ManagedAddress) -> SCResult<()> {
         self.set_gene_science_contract_address(&address);
 
         Ok(())
@@ -42,7 +42,7 @@ pub trait KittyOwnership {
 
     #[only_owner]
     #[endpoint(setKittyAuctionContractAddress)]
-    fn set_kitty_auction_contract_address_endpoint(&self, address: Address) -> SCResult<()> {
+    fn set_kitty_auction_contract_address_endpoint(&self, address: ManagedAddress) -> SCResult<()> {
         self.set_kitty_auction_contract_address(&address);
 
         Ok(())
@@ -55,7 +55,7 @@ pub trait KittyOwnership {
             &self.blockchain().get_caller(),
             &self
                 .blockchain()
-                .get_sc_balance(&TokenIdentifier::egld(), 0),
+                .get_sc_balance(&self.types().token_identifier_egld(), 0),
             b"claim",
         );
 
@@ -70,21 +70,21 @@ pub trait KittyOwnership {
     }
 
     #[view(balanceOf)]
-    fn balance_of(&self, address: Address) -> u32 {
+    fn balance_of(&self, address: ManagedAddress) -> u32 {
         self.get_nr_owned_kitties(&address)
     }
 
     #[view(ownerOf)]
-    fn owner_of(&self, kitty_id: u32) -> Address {
+    fn owner_of(&self, kitty_id: u32) -> ManagedAddress {
         if self._is_valid_id(kitty_id) {
             self.get_kitty_owner(kitty_id)
         } else {
-            Address::zero()
+            ManagedAddress::zero()
         }
     }
 
     #[endpoint]
-    fn approve(&self, to: Address, kitty_id: u32) -> SCResult<()> {
+    fn approve(&self, to: ManagedAddress, kitty_id: u32) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
 
         require!(self._is_valid_id(kitty_id), "Invalid kitty id!");
@@ -100,14 +100,11 @@ pub trait KittyOwnership {
     }
 
     #[endpoint]
-    fn transfer(&self, to: Address, kitty_id: u32) -> SCResult<()> {
+    fn transfer(&self, to: ManagedAddress, kitty_id: u32) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
 
         require!(self._is_valid_id(kitty_id), "Invalid kitty id!");
-        require!(
-            to != Address::zero(),
-            "Can't transfer to default address 0x0!"
-        );
+        require!(!to.is_zero(), "Can't transfer to default address 0x0!");
         require!(
             to != self.blockchain().get_sc_address(),
             "Can't transfer to this contract!"
@@ -123,21 +120,23 @@ pub trait KittyOwnership {
     }
 
     #[endpoint]
-    fn transfer_from(&self, from: Address, to: Address, kitty_id: u32) -> SCResult<()> {
+    fn transfer_from(
+        &self,
+        from: ManagedAddress,
+        to: ManagedAddress,
+        kitty_id: u32,
+    ) -> SCResult<()> {
         let caller = self.blockchain().get_caller();
 
         require!(self._is_valid_id(kitty_id), "Invalid kitty id!");
-        require!(
-            to != Address::zero(),
-            "Can't transfer to default address 0x0!"
-        );
+        require!(!to.is_zero(), "Can't transfer to default address 0x0!");
         require!(
             to != self.blockchain().get_sc_address(),
             "Can't transfer to this contract!"
         );
         require!(
             self.get_kitty_owner(kitty_id) == from,
-            "Address _from_ is not the owner!"
+            "ManagedAddress _from_ is not the owner!"
         );
         require!(
             self.get_kitty_owner(kitty_id) == caller
@@ -151,7 +150,7 @@ pub trait KittyOwnership {
     }
 
     #[view(tokensOfOwner)]
-    fn tokens_of_owner(&self, address: Address) -> Vec<u32> {
+    fn tokens_of_owner(&self, address: ManagedAddress) -> Vec<u32> {
         let nr_owned_kitties = self.get_nr_owned_kitties(&address);
         let total_kitties = self.get_total_kitties();
         let mut kitty_list = Vec::new();
@@ -172,7 +171,7 @@ pub trait KittyOwnership {
     // endpoints - kitty-auction contract only
 
     #[endpoint(allowAuctioning)]
-    fn allow_auctioning(&self, by: Address, kitty_id: u32) -> SCResult<()> {
+    fn allow_auctioning(&self, by: ManagedAddress, kitty_id: u32) -> SCResult<()> {
         let kitty_auction_addr = self._get_kitty_auction_contract_address_or_default();
 
         require!(
@@ -199,8 +198,8 @@ pub trait KittyOwnership {
     #[endpoint(approveSiringAndReturnKitty)]
     fn approve_siring_and_return_kitty(
         &self,
-        approved_address: Address,
-        kitty_owner: Address,
+        approved_address: ManagedAddress,
+        kitty_owner: ManagedAddress,
         kitty_id: u32,
     ) -> SCResult<()> {
         let kitty_auction_addr = self._get_kitty_auction_contract_address_or_default();
@@ -236,8 +235,8 @@ pub trait KittyOwnership {
         );
 
         let mut random = Random::new(
-            *self.blockchain().get_block_random_seed(),
-            self.blockchain().get_tx_hash().as_bytes(),
+            *self.blockchain().get_block_random_seed_legacy(),
+            self.blockchain().get_tx_hash_legacy().as_bytes(),
         );
         let genes = KittyGenes::get_random(&mut random);
         let kitty_id = self._create_new_gen_zero_kitty(&genes);
@@ -286,14 +285,15 @@ pub trait KittyOwnership {
     // endpoints - Kitty Breeding
 
     #[endpoint(approveSiring)]
-    fn approve_siring(&self, address: Address, kitty_id: u32) -> SCResult<()> {
+    fn approve_siring(&self, address: ManagedAddress, kitty_id: u32) -> SCResult<()> {
         require!(self._is_valid_id(kitty_id), "Invalid kitty id!");
         require!(
             self.get_kitty_owner(kitty_id) == self.blockchain().get_caller(),
             "You are not the owner of the kitty!"
         );
         require!(
-            self._get_sire_allowed_address_or_default(kitty_id) == Address::zero(),
+            self._get_sire_allowed_address_or_default(kitty_id)
+                .is_zero(),
             "Can't overwrite approved sire address!"
         );
 
@@ -306,7 +306,7 @@ pub trait KittyOwnership {
     #[endpoint(breedWith)]
     fn breed_with(
         &self,
-        #[payment] payment: Self::BigUint,
+        #[payment] payment: BigUint,
         matron_id: u32,
         sire_id: u32,
     ) -> SCResult<()> {
@@ -345,7 +345,7 @@ pub trait KittyOwnership {
     }
 
     #[endpoint(giveBirth)]
-    fn give_birth(&self, matron_id: u32) -> SCResult<AsyncCall<Self::SendApi>> {
+    fn give_birth(&self, matron_id: u32) -> SCResult<AsyncCall> {
         require!(self._is_valid_id(matron_id), "Invalid kitty id!");
 
         let matron = self.get_kitty_by_id(matron_id);
@@ -359,7 +359,7 @@ pub trait KittyOwnership {
         let sire = self.get_kitty_by_id(sire_id);
 
         let gene_science_contract_address = self._get_gene_science_contract_address_or_default();
-        if gene_science_contract_address != Address::zero() {
+        if !gene_science_contract_address.is_zero() {
             Ok(self
                 .kitty_genetic_alg_proxy(gene_science_contract_address)
                 .generate_kitty_genes(matron, sire)
@@ -375,7 +375,7 @@ pub trait KittyOwnership {
 
     // private
 
-    fn _transfer(&self, from: &Address, to: &Address, kitty_id: u32) {
+    fn _transfer(&self, from: &ManagedAddress, to: &ManagedAddress, kitty_id: u32) {
         if from == to {
             return;
         }
@@ -383,7 +383,7 @@ pub trait KittyOwnership {
         let mut nr_owned_to = self.get_nr_owned_kitties(to);
         nr_owned_to += 1;
 
-        if from != &Address::zero() {
+        if !from.is_zero() {
             let mut nr_owned_from = self.get_nr_owned_kitties(from);
             nr_owned_from -= 1;
 
@@ -406,7 +406,7 @@ pub trait KittyOwnership {
         sire_id: u32,
         generation: u16,
         genes: &KittyGenes,
-        owner: &Address,
+        owner: &ManagedAddress,
     ) -> u32 {
         let mut total_kitties = self.get_total_kitties();
         let new_kitty_id = total_kitties;
@@ -422,7 +422,7 @@ pub trait KittyOwnership {
         self.set_total_kitties(total_kitties);
         self.set_kitty_at_id(new_kitty_id, &kitty);
 
-        self._transfer(&Address::zero(), owner, new_kitty_id);
+        self._transfer(&ManagedAddress::zero(), owner, new_kitty_id);
 
         new_kitty_id
     }
@@ -439,7 +439,7 @@ pub trait KittyOwnership {
             genesis_kitty.sire_id,
             genesis_kitty.generation,
             &genesis_kitty.genes,
-            &Address::zero(),
+            &ManagedAddress::zero(),
         );
     }
 
@@ -523,33 +523,33 @@ pub trait KittyOwnership {
 
     // getters
 
-    fn _get_gene_science_contract_address_or_default(&self) -> Address {
+    fn _get_gene_science_contract_address_or_default(&self) -> ManagedAddress {
         if self.is_empty_gene_science_contract_address() {
-            Address::zero()
+            ManagedAddress::zero()
         } else {
             self.get_gene_science_contract_address()
         }
     }
 
-    fn _get_kitty_auction_contract_address_or_default(&self) -> Address {
+    fn _get_kitty_auction_contract_address_or_default(&self) -> ManagedAddress {
         if self.is_empty_kitty_auction_contract_address() {
-            Address::zero()
+            ManagedAddress::zero()
         } else {
             self.get_kitty_auction_contract_address()
         }
     }
 
-    fn _get_approved_address_or_default(&self, kitty_id: u32) -> Address {
+    fn _get_approved_address_or_default(&self, kitty_id: u32) -> ManagedAddress {
         if self.is_empty_approved_address(kitty_id) {
-            Address::zero()
+            ManagedAddress::zero()
         } else {
             self.get_approved_address(kitty_id)
         }
     }
 
-    fn _get_sire_allowed_address_or_default(&self, kitty_id: u32) -> Address {
+    fn _get_sire_allowed_address_or_default(&self, kitty_id: u32) -> ManagedAddress {
         if self.is_empty_sire_allowed_address(kitty_id) {
-            Address::zero()
+            ManagedAddress::zero()
         } else {
             self.get_sire_allowed_address(kitty_id)
         }
@@ -560,12 +560,12 @@ pub trait KittyOwnership {
     #[callback]
     fn generate_kitty_genes_callback(
         &self,
-        #[call_result] result: AsyncCallResult<KittyGenes>,
+        #[call_result] result: ManagedAsyncCallResult<KittyGenes>,
         matron_id: u32,
-        original_caller: Address,
+        original_caller: ManagedAddress,
     ) {
         match result {
-            AsyncCallResult::Ok(genes) => {
+            ManagedAsyncCallResult::Ok(genes) => {
                 let mut matron = self.get_kitty_by_id(matron_id);
                 let sire_id = matron.siring_with_id;
                 let mut sire = self.get_kitty_by_id(sire_id);
@@ -601,7 +601,7 @@ pub trait KittyOwnership {
                 self.send()
                     .direct_egld(&original_caller, &fee, b"birth fee");
             },
-            AsyncCallResult::Err(_) => {
+            ManagedAsyncCallResult::Err(_) => {
                 // this can only fail if the kitty_genes contract address is invalid
                 // in which case, the only thing we can do is call this again later
             },
@@ -611,34 +611,34 @@ pub trait KittyOwnership {
     // proxy
 
     #[proxy]
-    fn kitty_genetic_alg_proxy(&self, to: Address) -> kitty_genetic_alg::Proxy<Self::SendApi>;
+    fn kitty_genetic_alg_proxy(&self, to: ManagedAddress) -> kitty_genetic_alg::Proxy<Self::Api>;
 
     // storage - General
 
     #[storage_get("geneScienceContractAddress")]
-    fn get_gene_science_contract_address(&self) -> Address;
+    fn get_gene_science_contract_address(&self) -> ManagedAddress;
 
     #[storage_set("geneScienceContractAddress")]
-    fn set_gene_science_contract_address(&self, address: &Address);
+    fn set_gene_science_contract_address(&self, address: &ManagedAddress);
 
     #[storage_is_empty("geneScienceContractAddress")]
     fn is_empty_gene_science_contract_address(&self) -> bool;
 
     #[storage_get("kittyAuctionContractAddress")]
-    fn get_kitty_auction_contract_address(&self) -> Address;
+    fn get_kitty_auction_contract_address(&self) -> ManagedAddress;
 
     #[storage_set("kittyAuctionContractAddress")]
-    fn set_kitty_auction_contract_address(&self, address: &Address);
+    fn set_kitty_auction_contract_address(&self, address: &ManagedAddress);
 
     #[storage_is_empty("kittyAuctionContractAddress")]
     fn is_empty_kitty_auction_contract_address(&self) -> bool;
 
     #[view(birthFee)]
     #[storage_get("birthFee")]
-    fn get_birth_fee(&self) -> Self::BigUint;
+    fn get_birth_fee(&self) -> BigUint;
 
     #[storage_set("birthFee")]
-    fn set_birth_fee(&self, fee: Self::BigUint);
+    fn set_birth_fee(&self, fee: BigUint);
 
     // storage - Kitties
 
@@ -655,22 +655,22 @@ pub trait KittyOwnership {
     fn set_kitty_at_id(&self, kitty_id: u32, kitty: &Kitty);
 
     #[storage_get("owner")]
-    fn get_kitty_owner(&self, kitty_id: u32) -> Address;
+    fn get_kitty_owner(&self, kitty_id: u32) -> ManagedAddress;
 
     #[storage_set("owner")]
-    fn set_kitty_owner(&self, kitty_id: u32, owner: &Address);
+    fn set_kitty_owner(&self, kitty_id: u32, owner: &ManagedAddress);
 
     #[storage_get("nrOwnedKitties")]
-    fn get_nr_owned_kitties(&self, address: &Address) -> u32;
+    fn get_nr_owned_kitties(&self, address: &ManagedAddress) -> u32;
 
     #[storage_set("nrOwnedKitties")]
-    fn set_nr_owned_kitties(&self, address: &Address, nr_owned: u32);
+    fn set_nr_owned_kitties(&self, address: &ManagedAddress, nr_owned: u32);
 
     #[storage_get("approvedAddress")]
-    fn get_approved_address(&self, kitty_id: u32) -> Address;
+    fn get_approved_address(&self, kitty_id: u32) -> ManagedAddress;
 
     #[storage_set("approvedAddress")]
-    fn set_approved_address(&self, kitty_id: u32, address: &Address);
+    fn set_approved_address(&self, kitty_id: u32, address: &ManagedAddress);
 
     #[storage_clear("approvedAddress")]
     fn clear_approved_address(&self, kitty_id: u32);
@@ -679,10 +679,10 @@ pub trait KittyOwnership {
     fn is_empty_approved_address(&self, kitty_id: u32) -> bool;
 
     #[storage_get("sireAllowedAddress")]
-    fn get_sire_allowed_address(&self, kitty_id: u32) -> Address;
+    fn get_sire_allowed_address(&self, kitty_id: u32) -> ManagedAddress;
 
     #[storage_set("sireAllowedAddress")]
-    fn set_sire_allowed_address(&self, kitty_id: u32, address: &Address);
+    fn set_sire_allowed_address(&self, kitty_id: u32, address: &ManagedAddress);
 
     #[storage_clear("sireAllowedAddress")]
     fn clear_sire_allowed_address(&self, kitty_id: u32);
@@ -695,16 +695,16 @@ pub trait KittyOwnership {
     #[event("transfer")]
     fn transfer_event(
         &self,
-        #[indexed] from: &Address,
-        #[indexed] to: &Address,
+        #[indexed] from: &ManagedAddress,
+        #[indexed] to: &ManagedAddress,
         #[indexed] token_id: u32,
     );
 
     #[event("approve")]
     fn approve_event(
         &self,
-        #[indexed] owner: &Address,
-        #[indexed] approved: &Address,
+        #[indexed] owner: &ManagedAddress,
+        #[indexed] approved: &ManagedAddress,
         #[indexed] token_id: u32,
     );
 }

@@ -1,51 +1,65 @@
-use crate::*;
-use crate::{api::ErrorApi, types::BoxedBytes};
+use alloc::vec::Vec;
 
-pub struct BytesArgLoader<'a, SE>
+use crate::{
+    api::{ErrorApi, ManagedTypeApi},
+    err_msg,
+    types::{BoxedBytes, ManagedBytesTopDecodeInput},
+    DynArgInput,
+};
+
+/// Consumes a vector of `BoxedBytes` and deserializes from the vector one by one.
+pub struct BytesArgLoader<A>
 where
-    SE: ErrorApi,
+    A: ManagedTypeApi + ErrorApi,
 {
-    bytes: &'a [BoxedBytes],
-    signal_error: SE,
+    bytes_vec: Vec<BoxedBytes>,
+    next_index: usize,
+    api: A,
 }
 
-impl<'a, SE> BytesArgLoader<'a, SE>
+impl<A> BytesArgLoader<A>
 where
-    SE: ErrorApi,
+    A: ManagedTypeApi + ErrorApi,
 {
-    pub fn new(bytes: &'a [BoxedBytes], signal_error: SE) -> Self {
+    pub fn new(api: A, bytes_vec: Vec<BoxedBytes>) -> Self {
         BytesArgLoader {
-            bytes,
-            signal_error,
+            bytes_vec,
+            next_index: 0,
+            api,
         }
     }
 }
 
-impl<'a, SE> ErrorApi for BytesArgLoader<'a, SE>
+impl<A> DynArgInput for BytesArgLoader<A>
 where
-    SE: ErrorApi,
+    A: ManagedTypeApi + ErrorApi,
 {
-    #[inline]
-    fn signal_error(&self, message: &[u8]) -> ! {
-        self.signal_error.signal_error(message)
-    }
-}
+    type ItemInput = ManagedBytesTopDecodeInput<A>;
 
-impl<'a, SE> DynArgInput<&'a [u8]> for BytesArgLoader<'a, SE>
-where
-    SE: ErrorApi,
-{
+    type ErrorApi = A;
+
+    #[inline]
+    fn dyn_arg_vm_api(&self) -> Self::ErrorApi {
+        self.api.clone()
+    }
+
     #[inline]
     fn has_next(&self) -> bool {
-        !self.bytes.is_empty()
+        self.next_index < self.bytes_vec.len()
     }
 
-    fn next_arg_input(&mut self) -> &'a [u8] {
-        if self.bytes.is_empty() {
-            self.signal_error(err_msg::ARG_WRONG_NUMBER);
+    fn next_arg_input(&mut self) -> ManagedBytesTopDecodeInput<A> {
+        if !self.has_next() {
+            self.dyn_arg_vm_api()
+                .signal_error(err_msg::ARG_WRONG_NUMBER);
         }
-        let result = self.bytes[0].as_slice();
-        self.bytes = &self.bytes[1..];
-        result
+
+        // consume from the vector, get owned bytes
+        // no clone
+        // no vector resize
+        let boxed_bytes =
+            core::mem::replace(&mut self.bytes_vec[self.next_index], BoxedBytes::empty());
+        self.next_index += 1;
+        ManagedBytesTopDecodeInput::new(self.api.clone(), boxed_bytes)
     }
 }

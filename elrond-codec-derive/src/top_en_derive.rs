@@ -1,8 +1,10 @@
 use proc_macro::TokenStream;
 use quote::quote;
 
-use crate::nested_en_derive::{dep_encode_or_exit_snippet, dep_encode_snippet};
-use crate::util::*;
+use crate::{
+    nested_en_derive::{dep_encode_or_exit_snippet, dep_encode_snippet},
+    util::*,
+};
 
 pub fn variant_top_encode_snippets(
     name: &syn::Ident,
@@ -30,11 +32,11 @@ pub fn variant_top_encode_snippets(
                 });
                 quote! {
                     #name::#variant_ident #local_var_declarations => {
-                        let mut buffer = elrond_codec::Vec::<u8>::new();
+                        let mut buffer = output.start_nested_encode();
                         let dest = &mut buffer;
                         elrond_codec::NestedEncode::dep_encode(&#variant_index_u8, dest)?;
                         #(#variant_field_snippets)*
-                        output.set_slice_u8(&buffer[..]);
+                        output.finalize_nested_encode(buffer);
                         core::result::Result::Ok(())
                     },
                 }
@@ -69,11 +71,11 @@ pub fn variant_top_encode_or_exit_snippets(
 				});
 				quote! {
 					#name::#variant_ident #local_var_declarations => {
-						let mut buffer = elrond_codec::Vec::<u8>::new();
+						let mut buffer = output.start_nested_encode();
 						let dest = &mut buffer;
 						elrond_codec::NestedEncode::dep_encode_or_exit(&#variant_index_u8, dest, c.clone(), exit);
 						#(#variant_field_snippets)*
-						output.set_slice_u8(&buffer[..]);
+						output.finalize_nested_encode(buffer);
 					},
 				}
 			}
@@ -96,17 +98,17 @@ fn top_encode_method_bodies(
                     dep_encode_or_exit_snippet(&self_field_expr(index, field))
                 });
             let top_encode_body = quote! {
-                let mut buffer = elrond_codec::Vec::<u8>::new();
+                let mut buffer = output.start_nested_encode();
                 let dest = &mut buffer;
                 #(#field_dep_encode_snippets)*
-                output.set_slice_u8(&buffer[..]);
+                output.finalize_nested_encode(buffer);
                 core::result::Result::Ok(())
             };
             let top_encode_or_exit_body = quote! {
-                let mut buffer = elrond_codec::Vec::<u8>::new();
+                let mut buffer = output.start_nested_encode();
                 let dest = &mut buffer;
                 #(#field_dep_encode_or_exit_snippets)*
-                output.set_slice_u8(&buffer[..]);
+                output.finalize_nested_encode(buffer);
             };
             (top_encode_body, top_encode_or_exit_body)
         },

@@ -1,4 +1,21 @@
 {
+    "buildInfo": {
+        "rustc": {
+            "version": "x.x.x-nightly",
+            "commitHash": "<commit hash here>",
+            "commitDate": "<commit date here>",
+            "channel": "Channel",
+            "short": "rustc <version> (<short hash> <date>)"
+        },
+        "contractCrate": {
+            "name": "abi-tester",
+            "version": "0.0.0"
+        },
+        "framework": {
+            "name": "elrond-wasm",
+            "version": "0.20.1"
+        }
+    },
     "docs": [
         "Contract whose sole purpose is to verify that",
         "the ABI generation framework works sa expected.",
@@ -32,6 +49,7 @@
                 "Example endpoint docs."
             ],
             "name": "echo_abi_test_type",
+            "mutability": "mutable",
             "inputs": [
                 {
                     "name": "att",
@@ -48,6 +66,7 @@
         {
             "name": "echo_enum",
             "onlyOwner": true,
+            "mutability": "mutable",
             "inputs": [
                 {
                     "name": "e",
@@ -62,6 +81,7 @@
         },
         {
             "name": "multi_result_3",
+            "mutability": "mutable",
             "inputs": [],
             "outputs": [
                 {
@@ -80,6 +100,7 @@
         },
         {
             "name": "multi_result_4",
+            "mutability": "mutable",
             "inputs": [],
             "outputs": [
                 {
@@ -100,6 +121,7 @@
         },
         {
             "name": "var_args",
+            "mutability": "mutable",
             "inputs": [
                 {
                     "name": "_simple_arg",
@@ -115,6 +137,7 @@
         },
         {
             "name": "multi_result_vec",
+            "mutability": "mutable",
             "inputs": [],
             "outputs": [
                 {
@@ -125,6 +148,7 @@
         },
         {
             "name": "optional_arg",
+            "mutability": "mutable",
             "inputs": [
                 {
                     "name": "_simple_arg",
@@ -140,6 +164,7 @@
         },
         {
             "name": "optional_result",
+            "mutability": "mutable",
             "inputs": [],
             "outputs": [
                 {
@@ -150,6 +175,7 @@
         },
         {
             "name": "address_vs_h256",
+            "mutability": "mutable",
             "inputs": [
                 {
                     "name": "address",
@@ -170,7 +196,30 @@
             ]
         },
         {
+            "name": "managed_address_vs_byte_array",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "address",
+                    "type": "Address"
+                },
+                {
+                    "name": "byte_array",
+                    "type": "array32<u8>"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "Address"
+                },
+                {
+                    "type": "array32<u8>"
+                }
+            ]
+        },
+        {
             "name": "esdt_local_role",
+            "mutability": "mutable",
             "inputs": [],
             "outputs": [
                 {
@@ -180,6 +229,7 @@
         },
         {
             "name": "sample_storage_mapper",
+            "mutability": "readonly",
             "inputs": [],
             "outputs": [
                 {
@@ -189,6 +239,7 @@
         },
         {
             "name": "payable_egld",
+            "mutability": "mutable",
             "payableInTokens": [
                 "EGLD"
             ],
@@ -197,6 +248,7 @@
         },
         {
             "name": "payable_some_token",
+            "mutability": "mutable",
             "payableInTokens": [
                 "TOKEN-FOR-ABI"
             ],
@@ -205,6 +257,7 @@
         },
         {
             "name": "payable_any_token",
+            "mutability": "mutable",
             "payableInTokens": [
                 "*"
             ],

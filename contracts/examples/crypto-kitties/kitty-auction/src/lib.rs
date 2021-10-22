@@ -10,10 +10,10 @@ pub trait KittyAuction {
     #[init]
     fn init(
         &self,
-        gen_zero_kitty_starting_price: Self::BigUint,
-        gen_zero_kitty_ending_price: Self::BigUint,
+        gen_zero_kitty_starting_price: BigUint,
+        gen_zero_kitty_ending_price: BigUint,
         gen_zero_kitty_auction_duration: u64,
-        #[var_args] opt_kitty_ownership_contract_address: OptionalArg<Address>,
+        #[var_args] opt_kitty_ownership_contract_address: OptionalArg<ManagedAddress>,
     ) {
         self.gen_zero_kitty_starting_price()
             .set(&gen_zero_kitty_starting_price);
@@ -32,7 +32,10 @@ pub trait KittyAuction {
 
     #[only_owner]
     #[endpoint(setKittyOwnershipContractAddress)]
-    fn set_kitty_ownership_contract_address_endpoint(&self, address: Address) -> SCResult<()> {
+    fn set_kitty_ownership_contract_address_endpoint(
+        &self,
+        address: ManagedAddress,
+    ) -> SCResult<()> {
         self.kitty_ownership_contract_address().set(&address);
 
         Ok(())
@@ -40,10 +43,10 @@ pub trait KittyAuction {
 
     #[only_owner]
     #[endpoint(createAndAuctionGenZeroKitty)]
-    fn create_and_auction_gen_zero_kitty(&self) -> SCResult<AsyncCall<Self::SendApi>> {
+    fn create_and_auction_gen_zero_kitty(&self) -> SCResult<AsyncCall> {
         let kitty_ownership_contract_address =
             self.get_kitty_ownership_contract_address_or_default();
-        if kitty_ownership_contract_address != Address::zero() {
+        if !kitty_ownership_contract_address.is_zero() {
             Ok(self
                 .kitty_ownership_proxy(kitty_ownership_contract_address)
                 .create_gen_zero_kitty()
@@ -62,7 +65,7 @@ pub trait KittyAuction {
     }
 
     #[view(getAuctionStatus)]
-    fn get_auction_status(&self, kitty_id: u32) -> SCResult<Auction<Self::BigUint>> {
+    fn get_auction_status(&self, kitty_id: u32) -> SCResult<Auction<Self::Api>> {
         require!(
             self.is_up_for_auction(kitty_id),
             "Kitty is not up for auction!"
@@ -72,7 +75,7 @@ pub trait KittyAuction {
     }
 
     #[view(getCurrentWinningBid)]
-    fn get_current_winning_bid(&self, kitty_id: u32) -> SCResult<Self::BigUint> {
+    fn get_current_winning_bid(&self, kitty_id: u32) -> SCResult<BigUint> {
         require!(
             self.is_up_for_auction(kitty_id),
             "Kitty is not up for auction!"
@@ -87,10 +90,10 @@ pub trait KittyAuction {
     fn create_sale_auction(
         &self,
         kitty_id: u32,
-        starting_price: Self::BigUint,
-        ending_price: Self::BigUint,
+        starting_price: BigUint,
+        ending_price: BigUint,
         duration: u64,
-    ) -> SCResult<OptionalResult<AsyncCall<Self::SendApi>>> {
+    ) -> SCResult<OptionalResult<AsyncCall>> {
         let deadline = self.blockchain().get_block_timestamp() + duration;
 
         require!(
@@ -120,10 +123,10 @@ pub trait KittyAuction {
     fn create_siring_auction(
         &self,
         kitty_id: u32,
-        starting_price: Self::BigUint,
-        ending_price: Self::BigUint,
+        starting_price: BigUint,
+        ending_price: BigUint,
         duration: u64,
-    ) -> SCResult<OptionalResult<AsyncCall<Self::SendApi>>> {
+    ) -> SCResult<OptionalResult<AsyncCall>> {
         let deadline = self.blockchain().get_block_timestamp() + duration;
 
         require!(
@@ -151,7 +154,7 @@ pub trait KittyAuction {
 
     #[payable("EGLD")]
     #[endpoint]
-    fn bid(&self, kitty_id: u32, #[payment] payment: Self::BigUint) -> SCResult<()> {
+    fn bid(&self, kitty_id: u32, #[payment] payment: BigUint) -> SCResult<()> {
         require!(
             self.is_up_for_auction(kitty_id),
             "Kitty is not up for auction!"
@@ -182,7 +185,7 @@ pub trait KittyAuction {
         );
 
         // refund losing bid
-        if auction.current_winner != Address::zero() {
+        if !auction.current_winner.is_zero() {
             self.send()
                 .direct_egld(&auction.current_winner, &auction.current_bid, b"bid refund");
         }
@@ -196,7 +199,7 @@ pub trait KittyAuction {
     }
 
     #[endpoint(endAuction)]
-    fn end_auction(&self, kitty_id: u32) -> SCResult<OptionalResult<AsyncCall<Self::SendApi>>> {
+    fn end_auction(&self, kitty_id: u32) -> SCResult<OptionalResult<AsyncCall>> {
         require!(
             self.is_up_for_auction(kitty_id),
             "kitty is not up for auction!"
@@ -210,7 +213,7 @@ pub trait KittyAuction {
             "auction has not ended yet!"
         );
 
-        if auction.current_winner != Address::zero() {
+        if !auction.current_winner.is_zero() {
             match auction.auction_type {
                 AuctionType::Selling => Ok(self.transfer_to(auction.current_winner, kitty_id)),
                 AuctionType::Siring => Ok(self.approve_siring_and_return_kitty(
@@ -231,15 +234,15 @@ pub trait KittyAuction {
         &self,
         auction_type: AuctionType,
         kitty_id: u32,
-        starting_price: Self::BigUint,
-        ending_price: Self::BigUint,
+        starting_price: BigUint,
+        ending_price: BigUint,
         deadline: u64,
-    ) -> OptionalResult<AsyncCall<Self::SendApi>> {
+    ) -> OptionalResult<AsyncCall> {
         let caller = self.blockchain().get_caller();
 
         let kitty_ownership_contract_address =
             self.get_kitty_ownership_contract_address_or_default();
-        if kitty_ownership_contract_address != Address::zero() {
+        if !kitty_ownership_contract_address.is_zero() {
             OptionalResult::Some(
                 self.kitty_ownership_proxy(kitty_ownership_contract_address)
                     .allow_auctioning(caller.clone(), kitty_id)
@@ -275,14 +278,10 @@ pub trait KittyAuction {
         self.auction(kitty_id).set(&auction);
     }
 
-    fn transfer_to(
-        &self,
-        address: Address,
-        kitty_id: u32,
-    ) -> OptionalResult<AsyncCall<Self::SendApi>> {
+    fn transfer_to(&self, address: ManagedAddress, kitty_id: u32) -> OptionalResult<AsyncCall> {
         let kitty_ownership_contract_address =
             self.get_kitty_ownership_contract_address_or_default();
-        if kitty_ownership_contract_address != Address::zero() {
+        if !kitty_ownership_contract_address.is_zero() {
             OptionalResult::Some(
                 self.kitty_ownership_proxy(kitty_ownership_contract_address)
                     .transfer(address, kitty_id)
@@ -296,13 +295,13 @@ pub trait KittyAuction {
 
     fn approve_siring_and_return_kitty(
         &self,
-        approved_address: Address,
-        kitty_owner: Address,
+        approved_address: ManagedAddress,
+        kitty_owner: ManagedAddress,
         kitty_id: u32,
-    ) -> OptionalResult<AsyncCall<Self::SendApi>> {
+    ) -> OptionalResult<AsyncCall> {
         let kitty_ownership_contract_address =
             self.get_kitty_ownership_contract_address_or_default();
-        if kitty_ownership_contract_address != Address::zero() {
+        if !kitty_ownership_contract_address.is_zero() {
             OptionalResult::Some(
                 self.kitty_ownership_proxy(kitty_ownership_contract_address)
                     .approve_siring_and_return_kitty(approved_address, kitty_owner, kitty_id)
@@ -315,9 +314,9 @@ pub trait KittyAuction {
         }
     }
 
-    fn get_kitty_ownership_contract_address_or_default(&self) -> Address {
+    fn get_kitty_ownership_contract_address_or_default(&self) -> ManagedAddress {
         if self.kitty_ownership_contract_address().is_empty() {
-            Address::zero()
+            ManagedAddress::zero()
         } else {
             self.kitty_ownership_contract_address().get()
         }
@@ -326,19 +325,18 @@ pub trait KittyAuction {
     // callbacks
 
     #[callback]
-    #[allow(clippy::too_many_arguments)]
     fn allow_auctioning_callback(
         &self,
-        #[call_result] result: AsyncCallResult<()>,
+        #[call_result] result: ManagedAsyncCallResult<()>,
         auction_type: AuctionType,
         cb_kitty_id: u32,
-        starting_price: Self::BigUint,
-        ending_price: Self::BigUint,
+        starting_price: BigUint,
+        ending_price: BigUint,
         deadline: u64,
-        kitty_owner: Address,
+        kitty_owner: ManagedAddress,
     ) {
         match result {
-            AsyncCallResult::Ok(()) => {
+            ManagedAsyncCallResult::Ok(()) => {
                 let auction = Auction::new(
                     auction_type,
                     &starting_price,
@@ -349,16 +347,20 @@ pub trait KittyAuction {
 
                 self.auction(cb_kitty_id).set(&auction);
             },
-            AsyncCallResult::Err(_) => {
+            ManagedAsyncCallResult::Err(_) => {
                 // nothing to revert in case of error
             },
         }
     }
 
     #[callback]
-    fn transfer_callback(&self, #[call_result] result: AsyncCallResult<()>, cb_kitty_id: u32) {
+    fn transfer_callback(
+        &self,
+        #[call_result] result: ManagedAsyncCallResult<()>,
+        cb_kitty_id: u32,
+    ) {
         match result {
-            AsyncCallResult::Ok(()) => {
+            ManagedAsyncCallResult::Ok(()) => {
                 let auction = self.auction(cb_kitty_id).get();
                 self.auction(cb_kitty_id).clear();
 
@@ -366,7 +368,7 @@ pub trait KittyAuction {
                 // condition needed for gen zero kitties, since this sc is their owner
                 // and for when no bid was made
                 if auction.kitty_owner != self.blockchain().get_sc_address()
-                    && auction.current_winner != Address::zero()
+                    && !auction.current_winner.is_zero()
                 {
                     self.send().direct_egld(
                         &auction.kitty_owner,
@@ -375,7 +377,7 @@ pub trait KittyAuction {
                     );
                 }
             },
-            AsyncCallResult::Err(_) => {
+            ManagedAsyncCallResult::Err(_) => {
                 // this can only fail if the kitty_ownership contract address is invalid
                 // nothing to revert in case of error
             },
@@ -385,11 +387,11 @@ pub trait KittyAuction {
     #[callback]
     fn approve_siring_callback(
         &self,
-        #[call_result] result: AsyncCallResult<()>,
+        #[call_result] result: ManagedAsyncCallResult<()>,
         cb_kitty_id: u32,
-    ) -> OptionalResult<AsyncCall<Self::SendApi>> {
+    ) -> OptionalResult<AsyncCall> {
         match result {
-            AsyncCallResult::Ok(()) => {
+            ManagedAsyncCallResult::Ok(()) => {
                 let auction = self.auction(cb_kitty_id).get();
 
                 // transfer kitty back to its owner
@@ -398,7 +400,7 @@ pub trait KittyAuction {
                 // auction data will be cleared in the transfer callback
                 // winning bid money will be sent as well
             },
-            AsyncCallResult::Err(_) => {
+            ManagedAsyncCallResult::Err(_) => {
                 // this can only fail if the kitty_ownership contract address is invalid
                 // nothing to revert in case of error
                 OptionalResult::None
@@ -407,12 +409,12 @@ pub trait KittyAuction {
     }
 
     #[callback]
-    fn create_gen_zero_kitty_callback(&self, #[call_result] result: AsyncCallResult<u32>) {
+    fn create_gen_zero_kitty_callback(&self, #[call_result] result: ManagedAsyncCallResult<u32>) {
         match result {
-            AsyncCallResult::Ok(kitty_id) => {
+            ManagedAsyncCallResult::Ok(kitty_id) => {
                 self.start_gen_zero_kitty_auction(kitty_id);
             },
-            AsyncCallResult::Err(_) => {
+            ManagedAsyncCallResult::Err(_) => {
                 // this can only fail if the kitty_ownership contract address is invalid
                 // nothing to revert in case of error
             },
@@ -422,28 +424,28 @@ pub trait KittyAuction {
     // proxy
 
     #[proxy]
-    fn kitty_ownership_proxy(&self, to: Address) -> kitty_ownership::Proxy<Self::SendApi>;
+    fn kitty_ownership_proxy(&self, to: ManagedAddress) -> kitty_ownership::Proxy<Self::Api>;
 
     // storage
 
     // general
 
     #[storage_mapper("kittyOwnershipContractAddress")]
-    fn kitty_ownership_contract_address(&self) -> SingleValueMapper<Self::Storage, Address>;
+    fn kitty_ownership_contract_address(&self) -> SingleValueMapper<ManagedAddress>;
 
     // gen zero kitty
 
     #[storage_mapper("genZeroKittyStartingPrice")]
-    fn gen_zero_kitty_starting_price(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn gen_zero_kitty_starting_price(&self) -> SingleValueMapper<BigUint>;
 
     #[storage_mapper("genZeroKittyEndingPrice")]
-    fn gen_zero_kitty_ending_price(&self) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn gen_zero_kitty_ending_price(&self) -> SingleValueMapper<BigUint>;
 
     #[storage_mapper("genZeroKittyAuctionDuration")]
-    fn gen_zero_kitty_auction_duration(&self) -> SingleValueMapper<Self::Storage, u64>;
+    fn gen_zero_kitty_auction_duration(&self) -> SingleValueMapper<u64>;
 
     // auction
 
     #[storage_mapper("auction")]
-    fn auction(&self, kitty_id: u32) -> SingleValueMapper<Self::Storage, Auction<Self::BigUint>>;
+    fn auction(&self, kitty_id: u32) -> SingleValueMapper<Auction<Self::Api>>;
 }

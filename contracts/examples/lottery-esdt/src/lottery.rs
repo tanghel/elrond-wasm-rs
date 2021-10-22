@@ -20,22 +20,21 @@ pub trait Lottery {
     fn init(&self) {}
 
     #[endpoint]
-    #[allow(clippy::too_many_arguments)]
     fn start(
         &self,
         lottery_name: BoxedBytes,
-        token_name: TokenIdentifier,
-        ticket_price: Self::BigUint,
+        token_identifier: TokenIdentifier,
+        ticket_price: BigUint,
         opt_total_tickets: Option<u32>,
         opt_deadline: Option<u64>,
         opt_max_entries_per_user: Option<u32>,
         opt_prize_distribution: Option<Vec<u8>>,
-        opt_whitelist: Option<Vec<Address>>,
-        #[var_args] opt_burn_percentage: OptionalArg<Self::BigUint>,
+        opt_whitelist: Option<Vec<ManagedAddress>>,
+        #[var_args] opt_burn_percentage: OptionalArg<BigUint>,
     ) -> SCResult<()> {
         self.start_lottery(
             lottery_name,
-            token_name,
+            token_identifier,
             ticket_price,
             opt_total_tickets,
             opt_deadline,
@@ -47,22 +46,21 @@ pub trait Lottery {
     }
 
     #[endpoint(createLotteryPool)]
-    #[allow(clippy::too_many_arguments)]
     fn create_lottery_pool(
         &self,
         lottery_name: BoxedBytes,
-        token_name: TokenIdentifier,
-        ticket_price: Self::BigUint,
+        token_identifier: TokenIdentifier,
+        ticket_price: BigUint,
         opt_total_tickets: Option<u32>,
         opt_deadline: Option<u64>,
         opt_max_entries_per_user: Option<u32>,
         opt_prize_distribution: Option<Vec<u8>>,
-        opt_whitelist: Option<Vec<Address>>,
-        #[var_args] opt_burn_percentage: OptionalArg<Self::BigUint>,
+        opt_whitelist: Option<Vec<ManagedAddress>>,
+        #[var_args] opt_burn_percentage: OptionalArg<BigUint>,
     ) -> SCResult<()> {
         self.start_lottery(
             lottery_name,
-            token_name,
+            token_identifier,
             ticket_price,
             opt_total_tickets,
             opt_deadline,
@@ -77,14 +75,14 @@ pub trait Lottery {
     fn start_lottery(
         &self,
         lottery_name: BoxedBytes,
-        token_name: TokenIdentifier,
-        ticket_price: Self::BigUint,
+        token_identifier: TokenIdentifier,
+        ticket_price: BigUint,
         opt_total_tickets: Option<u32>,
         opt_deadline: Option<u64>,
         opt_max_entries_per_user: Option<u32>,
         opt_prize_distribution: Option<Vec<u8>>,
-        opt_whitelist: Option<Vec<Address>>,
-        #[var_args] opt_burn_percentage: OptionalArg<Self::BigUint>,
+        opt_whitelist: Option<Vec<ManagedAddress>>,
+        #[var_args] opt_burn_percentage: OptionalArg<BigUint>,
     ) -> SCResult<()> {
         require!(!lottery_name.is_empty(), "Name can't be empty!");
 
@@ -102,7 +100,7 @@ pub trait Lottery {
         );
         require!(!lottery_name.is_empty(), "Can't have empty lottery name!");
         require!(
-            token_name.is_egld() || token_name.is_valid_esdt_identifier(),
+            token_identifier.is_egld() || token_identifier.is_valid_esdt_identifier(),
             "Invalid token name provided!"
         );
         require!(ticket_price > 0, "Ticket price must be higher than 0!");
@@ -130,16 +128,16 @@ pub trait Lottery {
 
         match opt_burn_percentage {
             OptionalArg::Some(burn_percentage) => {
-                require!(!token_name.is_egld(), "EGLD can't be burned!");
+                require!(!token_identifier.is_egld(), "EGLD can't be burned!");
 
-                let roles = self.blockchain().get_esdt_local_roles(&token_name);
+                let roles = self.blockchain().get_esdt_local_roles(&token_identifier);
                 require!(
                     roles.contains(&EsdtLocalRole::Burn),
                     "The contract can't burn the selected token!"
                 );
 
                 require!(
-                    burn_percentage < Self::BigUint::from(PERCENTAGE_TOTAL),
+                    burn_percentage < PERCENTAGE_TOTAL,
                     "Invalid burn percentage!"
                 );
                 self.burn_percentage_for_lottery(&lottery_name)
@@ -149,14 +147,14 @@ pub trait Lottery {
         }
 
         let info = LotteryInfo {
-            token_name,
+            token_identifier,
             ticket_price,
             tickets_left: total_tickets,
             deadline,
             max_entries_per_user,
             prize_distribution,
             whitelist,
-            prize_pool: Self::BigUint::zero(),
+            prize_pool: self.types().big_uint_zero(),
         };
 
         self.lottery_info(&lottery_name).set(&info);
@@ -169,12 +167,14 @@ pub trait Lottery {
     fn buy_ticket(
         &self,
         lottery_name: BoxedBytes,
-        #[payment_token] token_name: TokenIdentifier,
-        #[payment] payment: Self::BigUint,
+        #[payment_token] token_identifier: TokenIdentifier,
+        #[payment] payment: BigUint,
     ) -> SCResult<()> {
         match self.status(&lottery_name) {
             Status::Inactive => sc_error!("Lottery is currently inactive."),
-            Status::Running => self.update_after_buy_ticket(&lottery_name, &token_name, &payment),
+            Status::Running => {
+                self.update_after_buy_ticket(&lottery_name, &token_identifier, &payment)
+            },
             Status::Ended => {
                 sc_error!("Lottery entry period has ended! Awaiting winner announcement.")
             },
@@ -212,8 +212,8 @@ pub trait Lottery {
     fn update_after_buy_ticket(
         &self,
         lottery_name: &BoxedBytes,
-        token_name: &TokenIdentifier,
-        payment: &Self::BigUint,
+        token_identifier: &TokenIdentifier,
+        payment: &BigUint,
     ) -> SCResult<()> {
         let mut info = self.lottery_info(lottery_name).get();
         let caller = self.blockchain().get_caller();
@@ -223,7 +223,7 @@ pub trait Lottery {
             "You are not allowed to participate in this lottery!"
         );
         require!(
-            token_name == &info.token_name && payment == &info.ticket_price,
+            token_identifier == &info.token_identifier && payment == &info.ticket_price,
             "Wrong ticket fee!"
         );
 
@@ -260,10 +260,12 @@ pub trait Lottery {
 
             // Prevent crashing if the role was unset while the lottery was running
             // The tokens will simply remain locked forever
-            let roles = self.blockchain().get_esdt_local_roles(&info.token_name);
+            let roles = self
+                .blockchain()
+                .get_esdt_local_roles(&info.token_identifier);
             if roles.contains(&EsdtLocalRole::Burn) {
                 self.send()
-                    .esdt_local_burn(&info.token_name, 0, &burn_amount);
+                    .esdt_local_burn(&info.token_identifier, 0, &burn_amount);
             }
 
             info.prize_pool -= burn_amount;
@@ -288,12 +290,12 @@ pub trait Lottery {
             let winner_address = self.ticket_holders(lottery_name).get(winning_ticket_id);
             let prize = self.calculate_percentage_of(
                 &total_prize,
-                &Self::BigUint::from(info.prize_distribution[i] as u32),
+                &self.types().big_uint_from(info.prize_distribution[i]),
             );
 
             self.send().direct(
                 &winner_address,
-                &info.token_name,
+                &info.token_identifier,
                 0,
                 &prize,
                 b"You won the lottery! Congratulations!",
@@ -305,7 +307,7 @@ pub trait Lottery {
         let first_place_winner = self.ticket_holders(lottery_name).get(winning_tickets[0]);
         self.send().direct(
             &first_place_winner,
-            &info.token_name,
+            &info.token_identifier,
             0,
             &info.prize_pool,
             b"You won the lottery, 1st place! Congratulations!",
@@ -339,7 +341,7 @@ pub trait Lottery {
     fn get_distinct_random(&self, min: usize, max: usize, amount: usize) -> Vec<usize> {
         let mut rand_numbers: Vec<usize> = (min..=max).collect();
         let total_numbers = rand_numbers.len();
-        let seed = self.blockchain().get_block_random_seed();
+        let seed = self.blockchain().get_block_random_seed_legacy();
         let mut rand = Random::new(*seed);
 
         for i in 0..amount {
@@ -350,36 +352,26 @@ pub trait Lottery {
         rand_numbers
     }
 
-    fn calculate_percentage_of(
-        &self,
-        value: &Self::BigUint,
-        percentage: &Self::BigUint,
-    ) -> Self::BigUint {
-        value * percentage / Self::BigUint::from(PERCENTAGE_TOTAL)
+    fn calculate_percentage_of(&self, value: &BigUint, percentage: &BigUint) -> BigUint {
+        value * percentage / PERCENTAGE_TOTAL
     }
 
     // storage
 
     #[view(getLotteryInfo)]
     #[storage_mapper("lotteryInfo")]
-    fn lottery_info(
-        &self,
-        lottery_name: &BoxedBytes,
-    ) -> SingleValueMapper<Self::Storage, LotteryInfo<Self::BigUint>>;
+    fn lottery_info(&self, lottery_name: &BoxedBytes) -> SingleValueMapper<LotteryInfo<Self::Api>>;
 
     #[storage_mapper("ticketHolder")]
-    fn ticket_holders(&self, lottery_name: &BoxedBytes) -> VecMapper<Self::Storage, Address>;
+    fn ticket_holders(&self, lottery_name: &BoxedBytes) -> VecMapper<ManagedAddress>;
 
     #[storage_mapper("numberOfEntriesForUser")]
     fn number_of_entries_for_user(
         &self,
         lottery_name: &BoxedBytes,
-        user: &Address,
-    ) -> SingleValueMapper<Self::Storage, u32>;
+        user: &ManagedAddress,
+    ) -> SingleValueMapper<u32>;
 
     #[storage_mapper("burnPercentageForLottery")]
-    fn burn_percentage_for_lottery(
-        &self,
-        lottery_name: &BoxedBytes,
-    ) -> SingleValueMapper<Self::Storage, Self::BigUint>;
+    fn burn_percentage_for_lottery(&self, lottery_name: &BoxedBytes) -> SingleValueMapper<BigUint>;
 }

@@ -1,6 +1,4 @@
-use super::arg_str_serialize::arg_serialize_push;
-use super::method_gen;
-use super::util::*;
+use super::{method_gen, util::*};
 use crate::model::{Method, MethodArgument};
 
 pub fn generate_event_impl(m: &Method, event_identifier: &str) -> proc_macro2::TokenStream {
@@ -16,21 +14,23 @@ pub fn generate_event_impl(m: &Method, event_identifier: &str) -> proc_macro2::T
         }
     }
 
-    let arg_accumulator = quote! { &mut ___topic_buffer___ };
-    let error_api_getter = quote! { self.log_api_raw() };
     let topic_push_snippets: Vec<proc_macro2::TokenStream> = topic_args
         .iter()
-        .map(|arg| arg_serialize_push(arg, &arg_accumulator, &error_api_getter))
+        .map(|arg| {
+            let topic_pat = &arg.pat;
+            quote! {
+                elrond_wasm::log_util::serialize_event_topic(&mut ___topic_accumulator___, #topic_pat);
+            }
+        })
         .collect();
-    let write_log_snippet = if let Some(data_arg) = data_arg {
+    let data_buffer_snippet = if let Some(data_arg) = data_arg {
         let data_pat = &data_arg.pat;
         quote! {
-            let ___data_bytes___ = elrond_wasm::log_util::serialize_log_data(#data_pat, self.log_api_raw());
-            self.log_api_raw().write_event_log(&___topic_buffer___, ___data_bytes___.as_slice());
+            let ___data_buffer___ = elrond_wasm::log_util::serialize_log_data(self.raw_vm_api(), #data_pat);
         }
     } else {
         quote! {
-            self.log_api_raw().write_event_log(&___topic_buffer___, &[]);
+            let ___data_buffer___ = elrond_wasm::types::ManagedBuffer::new(self.raw_vm_api());
         }
     };
 
@@ -38,14 +38,18 @@ pub fn generate_event_impl(m: &Method, event_identifier: &str) -> proc_macro2::T
     let event_identifier_literal = byte_slice_literal(event_identifier.as_bytes());
     quote! {
         #msig {
-            let mut ___topic_buffer___ = elrond_wasm::types::ArgBuffer::new();
-            ___topic_buffer___.push_argument_bytes(#event_identifier_literal);
+            let mut ___topic_accumulator___ = elrond_wasm::log_util::event_topic_accumulator(
+                self.raw_vm_api(),
+                #event_identifier_literal,
+            );
             #(#topic_push_snippets)*
-            #write_log_snippet
+            #data_buffer_snippet
+            elrond_wasm::log_util::write_log(self.raw_vm_api(), &___topic_accumulator___, &___data_buffer___);
         }
     }
 }
 
+/// Still only used in legacy event logs.
 fn generate_topic_conversion_code(
     topic_index: usize,
     arg: &MethodArgument,
@@ -53,11 +57,10 @@ fn generate_topic_conversion_code(
     let pat = &arg.pat;
     match &arg.ty {
         syn::Type::Reference(type_reference) => {
-            if type_reference.mutability.is_some() {
-                panic!(
-                    "[Event topic] Mutable references not supported as contract method arguments"
-                );
-            }
+            assert!(
+                type_reference.mutability.is_none(),
+                "[Event topic] Mutable references not supported as contract method arguments"
+            );
             match &*type_reference.elem {
                 syn::Type::Path(type_path) => {
                     let type_str = type_path.path.segments.last().unwrap().ident.to_string();
@@ -92,9 +95,10 @@ fn generate_topic_conversion_code(
 
 pub fn generate_legacy_event_impl(m: &Method, event_id_bytes: &[u8]) -> proc_macro2::TokenStream {
     let nr_args_no_self = m.method_args.len();
-    if nr_args_no_self == 0 {
-        panic!("events need at least 1 argument, for the data");
-    }
+    assert!(
+        nr_args_no_self != 0,
+        "events need at least 1 argument, for the data"
+    );
     let nr_topics = nr_args_no_self as usize; // -1 data, +1 event id
 
     let mut topic_index: usize = 1;
@@ -110,9 +114,9 @@ pub fn generate_legacy_event_impl(m: &Method, event_id_bytes: &[u8]) -> proc_mac
 			} else {
 				let pat = &arg.pat;
 				quote! {
-					let data_vec = match elrond_wasm::elrond_codec::top_encode_to_vec(&#pat) {
+					let data_vec = match elrond_wasm::elrond_codec::top_encode_to_vec_u8(&#pat) {
 						Result::Ok(data_vec) => data_vec,
-						Result::Err(encode_err) => self.log_api_raw().signal_error(encode_err.message_bytes()),
+						Result::Err(encode_err) => self.raw_vm_api().signal_error(encode_err.message_bytes()),
 					};
 				}
 			};
@@ -127,7 +131,7 @@ pub fn generate_legacy_event_impl(m: &Method, event_id_bytes: &[u8]) -> proc_mac
             let mut topics = [[0u8; 32]; #nr_topics];
             topics[0] = #event_id_literal;
             #(#topic_conv_snippets)*
-            self.log_api_raw().write_legacy_log(&topics[..], &data_vec.as_slice());
+            self.raw_vm_api().write_legacy_log(&topics[..], &data_vec.as_slice());
         }
     }
 }

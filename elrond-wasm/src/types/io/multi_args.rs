@@ -1,10 +1,10 @@
-use crate::abi::{OutputAbi, TypeAbi, TypeDescriptionContainer};
-use crate::io::{ArgId, ContractCallArg, DynArg, DynArgInput};
-use crate::types::{ArgBuffer, SCError};
-use crate::{api::EndpointFinishApi, EndpointResult};
-use alloc::string::String;
-use alloc::vec::Vec;
-use elrond_codec::TopDecodeInput;
+use crate::{
+    abi::{OutputAbi, TypeAbi, TypeDescriptionContainer},
+    api::{EndpointFinishApi, ManagedTypeApi},
+    io::{ArgId, ContractCallArg, DynArg, DynArgInput, DynArgOutput},
+    EndpointResult,
+};
+use alloc::{string::String, vec::Vec};
 
 macro_rules! multi_arg_impls {
     ($(($marg_struct:ident $mres_struct:ident $($n:tt $name:ident)+) )+) => {
@@ -18,10 +18,9 @@ macro_rules! multi_arg_impls {
             where
                 $($name: DynArg,)+
             {
-                fn dyn_load<I, D>(loader: &mut D, arg_id: ArgId) -> Self
+                fn dyn_load<I>(loader: &mut I, arg_id: ArgId) -> Self
                 where
-                    I: TopDecodeInput,
-                    D: DynArgInput<I>,
+                    I: DynArgInput,
                 {
                     $marg_struct((
                         $(
@@ -40,7 +39,7 @@ macro_rules! multi_arg_impls {
                 #[inline]
 				fn finish<FA>(&self, api: FA)
                 where
-                    FA: EndpointFinishApi + Clone + 'static,
+                    FA: ManagedTypeApi + EndpointFinishApi + Clone + 'static,
                 {
                     $(
                         (self.0).$n.finish(api.clone());
@@ -53,11 +52,10 @@ macro_rules! multi_arg_impls {
                 $($name: ContractCallArg,)+
             {
                 #[inline]
-                fn push_async_arg(&self, serializer: &mut ArgBuffer) -> Result<(), SCError> {
+                fn push_dyn_arg<O: DynArgOutput>(&self, output: &mut O) {
                     $(
-                        (self.0).$n.push_async_arg(serializer)?;
+                        (self.0).$n.push_dyn_arg(output);
                     )+
-                    Ok(())
                 }
             }
 
@@ -65,8 +63,8 @@ macro_rules! multi_arg_impls {
             where
                 $($name: ContractCallArg,)+
             {
-                fn push_async_arg(&self, serializer: &mut ArgBuffer) -> Result<(), SCError> {
-                    (&self).push_async_arg(serializer)
+                fn push_dyn_arg<O: DynArgOutput>(&self, output: &mut O) {
+                    (&self).push_dyn_arg(output)
                 }
             }
 

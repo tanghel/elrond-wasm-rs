@@ -2,12 +2,11 @@
     "name": "deploy nft",
     "steps": [
         {
-            "step" : "setState",
+            "step": "setState",
             "accounts": {
                 "address:contract_owner": {
                     "nonce": "0",
-                    "balance": "0",
-                    "storage": {}
+                    "balance": "0"
                 }
             },
             "newAddresses": [
@@ -24,7 +23,6 @@
             "tx": {
                 "from": "address:contract_owner",
                 "contractCode": "file:../output/erc721.wasm",
-                "value": "0",
                 "arguments": [
                     "3"
                 ],
@@ -32,6 +30,7 @@
                 "gasPrice": "0"
             },
             "expect": {
+                "out": [],
                 "status": "0",
                 "gas": "*",
                 "refund": "*"
@@ -49,7 +48,6 @@
                     "nonce": "0",
                     "balance": "0",
                     "storage": {
-                        
                         "str:totalMinted": "3",
                         "str:tokenCount|address:contract_owner": "3",
                         "str:tokenOwner|u64:0": "address:contract_owner",

@@ -3,8 +3,8 @@ pub struct EncodeError(&'static [u8]);
 
 impl From<&'static [u8]> for EncodeError {
     #[inline]
-    fn from(bytes: &'static [u8]) -> Self {
-        EncodeError(bytes)
+    fn from(message_bytes: &'static [u8]) -> Self {
+        EncodeError(message_bytes)
     }
 }
 
@@ -22,8 +22,8 @@ pub struct DecodeError(&'static [u8]);
 
 impl From<&'static [u8]> for DecodeError {
     #[inline]
-    fn from(bytes: &'static [u8]) -> Self {
-        DecodeError(bytes)
+    fn from(message_bytes: &'static [u8]) -> Self {
+        DecodeError(message_bytes)
     }
 }
 
